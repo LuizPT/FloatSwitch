@@ -41,6 +41,7 @@ class OverlayService : Service() {
     private lateinit var selectedAppsStore: SelectedAppsStore
     private lateinit var launcherAppsRepository: LauncherAppsRepository
     private lateinit var overlayPositionStore: OverlayPositionStore
+    private lateinit var autoStartStateStore: AutoStartStateStore
     private var overlayView: View? = null
     private var overlayButtons: List<ImageButton> = emptyList()
     private var currentPosition = OverlayPositionRules.defaultPosition
@@ -55,48 +56,90 @@ class OverlayService : Service() {
     private val gestureHandler = Handler(Looper.getMainLooper())
     private val touchSlop by lazy { ViewConfiguration.get(this).scaledTouchSlop }
     private val longPressAction = Runnable { startDragging() }
-    private val permissionHandler = Handler(Looper.getMainLooper())
-    private val permissionCheck = object : Runnable {
+    private val stateCheckHandler = Handler(Looper.getMainLooper())
+    private val stateCheck = object : Runnable {
         override fun run() {
-            if (!Settings.canDrawOverlays(this@OverlayService)) {
+            if (!autoStartStateStore.isOverlayRequestedActive()) {
                 stopSelf()
-            } else {
-                permissionHandler.postDelayed(this, PERMISSION_CHECK_INTERVAL_MS)
+                return
             }
+            if (!Settings.canDrawOverlays(this@OverlayService)) {
+                stopForInvalidState(AutoStartResult.OVERLAY_PERMISSION_MISSING)
+                return
+            }
+            val invalidApplication = try {
+                findInvalidStoredApplication()
+            } catch (_: SecurityException) {
+                stopForInvalidState(AutoStartResult.SECURITY_EXCEPTION)
+                return
+            } catch (_: RuntimeException) {
+                stopForInvalidState(AutoStartResult.RUNTIME_EXCEPTION)
+                return
+            }
+            if (invalidApplication != null) {
+                stopForInvalidState(invalidApplication)
+                return
+            }
+            stateCheckHandler.postDelayed(this, STATE_CHECK_INTERVAL_MS)
         }
     }
 
     override fun onCreate() {
         super.onCreate()
         windowManager = getSystemService(WindowManager::class.java)
+        autoStartStateStore = AutoStartStateStore(this)
+        createNotificationChannel()
+        startForegroundImmediately()
         selectedAppsStore = SelectedAppsStore(this)
         launcherAppsRepository = LauncherAppsRepository(packageManager, packageName)
         overlayPositionStore = OverlayPositionStore(this)
         currentPosition = overlayPositionStore.load()
-        createNotificationChannel()
-        startForegroundImmediately()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_HIDE) {
+        if (intent?.action == ACTION_STOP) {
+            autoStartStateStore.setOverlayRequestedActive(false)
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        if (intent != null && intent.action != ACTION_SHOW) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        if (intent == null && !autoStartStateStore.isOverlayRequestedActive()) {
             stopSelf()
             return START_NOT_STICKY
         }
 
         if (!Settings.canDrawOverlays(this)) {
-            stopSelf()
+            stopForInvalidState(AutoStartResult.OVERLAY_PERMISSION_MISSING)
             return START_NOT_STICKY
         }
 
-        val installedApps = loadSelectedApplications()
-        if (installedApps == null) {
-            stopSelf()
+        val applications = try {
+            loadSelectedApplications()
+        } catch (_: SecurityException) {
+            stopForInvalidState(AutoStartResult.SECURITY_EXCEPTION)
+            return START_NOT_STICKY
+        } catch (_: RuntimeException) {
+            stopForInvalidState(AutoStartResult.RUNTIME_EXCEPTION)
             return START_NOT_STICKY
         }
+        when (applications) {
+            is SelectedApplicationsResult.Invalid -> {
+                stopForInvalidState(applications.reason)
+                return START_NOT_STICKY
+            }
 
-        showOrUpdateOverlay(installedApps)
-        schedulePermissionCheck()
-        return START_NOT_STICKY
+            is SelectedApplicationsResult.Valid -> {
+                showOrUpdateOverlay(applications.applications)
+            }
+        }
+
+        scheduleStateCheck()
+        return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -107,18 +150,10 @@ class OverlayService : Service() {
     }
 
     override fun onDestroy() {
-        permissionHandler.removeCallbacks(permissionCheck)
+        stateCheckHandler.removeCallbacks(stateCheck)
         gestureHandler.removeCallbacksAndMessages(null)
         resetGestureState()
-        overlayView?.let { view ->
-            try {
-                windowManager.removeView(view)
-            } catch (_: IllegalArgumentException) {
-                // A View pode já ter sido removida pelo sistema após revogar a autorização.
-            }
-        }
-        overlayView = null
-        overlayButtons = emptyList()
+        removeOverlay()
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
@@ -161,11 +196,11 @@ class OverlayService : Service() {
             openAppIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val hideIntent = Intent(this, OverlayService::class.java).setAction(ACTION_HIDE)
-        val hidePendingIntent = PendingIntent.getService(
+        val stopIntent = Intent(this, OverlayService::class.java).setAction(ACTION_STOP)
+        val stopPendingIntent = PendingIntent.getService(
             this,
-            REQUEST_HIDE,
-            hideIntent,
+            REQUEST_STOP,
+            stopIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
@@ -182,18 +217,20 @@ class OverlayService : Service() {
             .addAction(
                 R.drawable.ic_notification_hide,
                 getString(R.string.notification_action_hide),
-                hidePendingIntent,
+                stopPendingIntent,
             )
             .build()
     }
 
-    private fun loadSelectedApplications(): List<InstalledLauncherApp>? {
+    private fun loadSelectedApplications(): SelectedApplicationsResult {
         val installedApps = AppSlot.values().map { slot ->
-            val savedSelection = selectedAppsStore.load(slot) ?: return null
+            val invalidReason = slot.invalidResult()
+            val savedSelection = selectedAppsStore.load(slot)
+                ?: return SelectedApplicationsResult.Invalid(invalidReason)
             val installedApp = launcherAppsRepository.findInstalledApp(savedSelection)
             if (installedApp == null) {
                 selectedAppsStore.clear(slot)
-                return null
+                return SelectedApplicationsResult.Invalid(invalidReason)
             }
             if (installedApp.selection != savedSelection) {
                 selectedAppsStore.save(slot, installedApp.selection)
@@ -206,9 +243,35 @@ class OverlayService : Service() {
             installedApps[1].selection.packageName
         ) {
             selectedAppsStore.clear(AppSlot.SECOND)
-            return null
+            return SelectedApplicationsResult.Invalid(AutoStartResult.SECOND_APP_INVALID)
         }
-        return installedApps
+        return SelectedApplicationsResult.Valid(installedApps)
+    }
+
+    private fun findInvalidStoredApplication(): AutoStartResult? {
+        val firstSelection = selectedAppsStore.load(AppSlot.FIRST)
+        if (firstSelection == null) {
+            selectedAppsStore.clear(AppSlot.FIRST)
+            return AutoStartResult.FIRST_APP_INVALID
+        }
+
+        val secondSelection = selectedAppsStore.load(AppSlot.SECOND)
+        if (secondSelection == null) {
+            selectedAppsStore.clear(AppSlot.SECOND)
+            return AutoStartResult.SECOND_APP_INVALID
+        }
+        val activityValidity = launcherAppsRepository.validateLauncherActivities(
+            listOf(firstSelection, secondSelection),
+        )
+        if (!activityValidity[0]) {
+            selectedAppsStore.clear(AppSlot.FIRST)
+            return AutoStartResult.FIRST_APP_INVALID
+        }
+        if (!activityValidity[1] || secondSelection.packageName == firstSelection.packageName) {
+            selectedAppsStore.clear(AppSlot.SECOND)
+            return AutoStartResult.SECOND_APP_INVALID
+        }
+        return null
     }
 
     private fun showOrUpdateOverlay(installedApps: List<InstalledLauncherApp>) {
@@ -274,9 +337,12 @@ class OverlayService : Service() {
             overlayView = container
             ViewCompat.requestApplyInsets(container)
             container.post { restoreOverlayPosition() }
+        } catch (_: SecurityException) {
+            overlayButtons = emptyList()
+            stopForInvalidState(AutoStartResult.OVERLAY_PERMISSION_MISSING)
         } catch (_: RuntimeException) {
             overlayButtons = emptyList()
-            stopSelf()
+            stopForInvalidState(AutoStartResult.RUNTIME_EXCEPTION)
         }
     }
 
@@ -519,9 +585,9 @@ class OverlayService : Service() {
         try {
             windowManager.updateViewLayout(view, params)
         } catch (_: IllegalArgumentException) {
-            stopSelf()
+            stopForInvalidState(AutoStartResult.RUNTIME_EXCEPTION)
         } catch (_: SecurityException) {
-            stopSelf()
+            stopForInvalidState(AutoStartResult.OVERLAY_PERMISSION_MISSING)
         }
     }
 
@@ -567,9 +633,33 @@ class OverlayService : Service() {
         false
     }
 
-    private fun schedulePermissionCheck() {
-        permissionHandler.removeCallbacks(permissionCheck)
-        permissionHandler.postDelayed(permissionCheck, PERMISSION_CHECK_INTERVAL_MS)
+    private fun scheduleStateCheck() {
+        stateCheckHandler.removeCallbacks(stateCheck)
+        stateCheckHandler.postDelayed(stateCheck, STATE_CHECK_INTERVAL_MS)
+    }
+
+    private fun stopForInvalidState(result: AutoStartResult) {
+        autoStartStateStore.setOverlayRequestedActive(false)
+        autoStartStateStore.recordDiagnostic(AutoStartEvent.SERVICE_RECOVERY, result)
+        removeOverlay()
+        stopSelf()
+    }
+
+    private fun removeOverlay() {
+        overlayView?.let { view ->
+            try {
+                windowManager.removeView(view)
+            } catch (_: RuntimeException) {
+                // A View pode já ter sido removida pelo sistema.
+            }
+        }
+        overlayView = null
+        overlayButtons = emptyList()
+    }
+
+    private fun AppSlot.invalidResult(): AutoStartResult = when (this) {
+        AppSlot.FIRST -> AutoStartResult.FIRST_APP_INVALID
+        AppSlot.SECOND -> AutoStartResult.SECOND_APP_INVALID
     }
 
     private inner class OverlayImageButton(context: Context) : AppCompatImageButton(context) {
@@ -584,15 +674,25 @@ class OverlayService : Service() {
         override fun performClick(): Boolean = super.performClick()
     }
 
+    private sealed interface SelectedApplicationsResult {
+        data class Valid(
+            val applications: List<InstalledLauncherApp>,
+        ) : SelectedApplicationsResult
+
+        data class Invalid(
+            val reason: AutoStartResult,
+        ) : SelectedApplicationsResult
+    }
+
     companion object {
         const val ACTION_SHOW = "me.diluir.floatswitch.action.SHOW_OVERLAY"
-        const val ACTION_HIDE = "me.diluir.floatswitch.action.HIDE_OVERLAY"
+        const val ACTION_STOP = "me.diluir.floatswitch.action.STOP_OVERLAY"
 
         private const val NOTIFICATION_CHANNEL_ID = "floating_shortcuts"
         private const val NOTIFICATION_ID = 1001
         private const val REQUEST_OPEN_APP = 1002
-        private const val REQUEST_HIDE = 1003
-        private const val PERMISSION_CHECK_INTERVAL_MS = 5_000L
+        private const val REQUEST_STOP = 1003
+        private const val STATE_CHECK_INTERVAL_MS = 5_000L
         private const val DRAGGING_ALPHA = 0.85f
     }
 }

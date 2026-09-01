@@ -189,6 +189,33 @@
                 android:text="@string/button_grant_overlay_permission"
                 android:textAllCaps="false" />
 
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/autoStartSwitch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_large"
+                android:minHeight="@dimen/action_button_min_height"
+                android:text="@string/auto_start_title"
+                android:textColor="@color/screen_text_primary"
+                android:textSize="@dimen/text_size_body" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_small"
+                android:text="@string/auto_start_description"
+                android:textColor="@color/screen_text_secondary"
+                android:textSize="@dimen/text_size_body" />
+
+            <TextView
+                android:id="@+id/autoStartDiagnostic"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_small"
+                android:text="@string/auto_start_diagnostic_never"
+                android:textColor="@color/screen_text_secondary"
+                android:textSize="@dimen/text_size_body" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/showShortcutsButton"
                 android:layout_width="match_parent"

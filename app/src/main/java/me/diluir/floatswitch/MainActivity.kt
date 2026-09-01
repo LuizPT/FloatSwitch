@@ -15,22 +15,29 @@ import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import java.text.DateFormat
+import java.util.Date
 
 class MainActivity : AppCompatActivity() {
     private lateinit var permissionStateText: TextView
     private lateinit var feedbackText: TextView
+    private lateinit var autoStartDiagnosticText: TextView
+    private lateinit var autoStartSwitch: SwitchCompat
     private lateinit var showShortcutsButton: Button
     private lateinit var firstSlotViews: AppSlotViews
     private lateinit var secondSlotViews: AppSlotViews
     private lateinit var selectedAppsStore: SelectedAppsStore
     private lateinit var launcherAppsRepository: LauncherAppsRepository
+    private lateinit var autoStartStateStore: AutoStartStateStore
 
     private var firstInstalledApp: InstalledLauncherApp? = null
     private var secondInstalledApp: InstalledLauncherApp? = null
+    private var updatingAutoStartSwitch = false
 
     private val overlayPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -81,8 +88,11 @@ class MainActivity : AppCompatActivity() {
 
         selectedAppsStore = SelectedAppsStore(this)
         launcherAppsRepository = LauncherAppsRepository(packageManager, packageName)
+        autoStartStateStore = AutoStartStateStore(this)
         permissionStateText = findViewById(R.id.overlayPermissionState)
         feedbackText = findViewById(R.id.feedbackText)
+        autoStartDiagnosticText = findViewById(R.id.autoStartDiagnostic)
+        autoStartSwitch = findViewById(R.id.autoStartSwitch)
         showShortcutsButton = findViewById(R.id.showShortcutsButton)
         firstSlotViews = AppSlotViews(
             icon = findViewById(R.id.applicationOneIcon),
@@ -116,12 +126,18 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.hideShortcutsButton).setOnClickListener {
             hideShortcuts()
         }
+        autoStartSwitch.setOnCheckedChangeListener { _, enabled ->
+            if (!updatingAutoStartSwitch) {
+                changeAutoStartPreference(enabled)
+            }
+        }
     }
 
     override fun onResume() {
         super.onResume()
         updateOverlayPermissionState()
         refreshSelectedApplications()
+        updateAutoStartInformation()
     }
 
     private fun openApplicationPicker(slot: AppSlot) {
@@ -245,6 +261,58 @@ class MainActivity : AppCompatActivity() {
         permissionStateText.setTextColor(ContextCompat.getColor(this, textColor))
     }
 
+    private fun changeAutoStartPreference(enabled: Boolean) {
+        if (!enabled) {
+            autoStartStateStore.setAutoStartEnabled(false)
+            feedbackText.setText(R.string.auto_start_disabled_feedback)
+            return
+        }
+
+        refreshSelectedApplications()
+        if (!Settings.canDrawOverlays(this)) {
+            autoStartStateStore.setAutoStartEnabled(false)
+            setAutoStartSwitchChecked(false)
+            updateOverlayPermissionState()
+            feedbackText.setText(R.string.auto_start_requires_overlay)
+            return
+        }
+        if (firstInstalledApp == null || secondInstalledApp == null) {
+            autoStartStateStore.setAutoStartEnabled(false)
+            setAutoStartSwitchChecked(false)
+            feedbackText.setText(R.string.auto_start_requires_apps)
+            return
+        }
+
+        autoStartStateStore.setAutoStartEnabled(true)
+        feedbackText.setText(R.string.auto_start_enabled_feedback)
+    }
+
+    private fun updateAutoStartInformation() {
+        setAutoStartSwitchChecked(autoStartStateStore.isAutoStartEnabled())
+        val diagnostic = autoStartStateStore.loadDiagnostic()
+        if (diagnostic == null) {
+            autoStartDiagnosticText.setText(R.string.auto_start_diagnostic_never)
+            return
+        }
+
+        val formattedDate = DateFormat.getDateTimeInstance(
+            DateFormat.MEDIUM,
+            DateFormat.SHORT,
+        ).format(Date(diagnostic.timestampMillis))
+        autoStartDiagnosticText.text = getString(
+            R.string.auto_start_diagnostic_format,
+            formattedDate,
+            getString(diagnostic.event.displayNameResource()),
+            getString(diagnostic.result.displayNameResource()),
+        )
+    }
+
+    private fun setAutoStartSwitchChecked(checked: Boolean) {
+        updatingAutoStartSwitch = true
+        autoStartSwitch.isChecked = checked
+        updatingAutoStartSwitch = false
+    }
+
     private fun showShortcuts() {
         refreshSelectedApplications()
         if (firstInstalledApp == null || secondInstalledApp == null) {
@@ -275,6 +343,7 @@ class MainActivity : AppCompatActivity() {
                 this,
                 Intent(this, OverlayService::class.java).setAction(OverlayService.ACTION_SHOW),
             )
+            autoStartStateStore.setOverlayRequestedActive(true)
             feedbackText.setText(R.string.shortcuts_start_requested)
         } catch (_: RuntimeException) {
             feedbackText.setText(R.string.shortcuts_start_failed)
@@ -282,8 +351,43 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun hideShortcuts() {
-        stopService(Intent(this, OverlayService::class.java))
-        feedbackText.setText(R.string.shortcuts_hidden)
+        autoStartStateStore.setOverlayRequestedActive(false)
+        try {
+            val stoppedService = startService(
+                Intent(this, OverlayService::class.java).setAction(OverlayService.ACTION_STOP),
+            )
+            feedbackText.setText(
+                if (stoppedService != null) {
+                    R.string.shortcuts_hidden
+                } else {
+                    R.string.shortcuts_hide_failed
+                },
+            )
+        } catch (_: RuntimeException) {
+            feedbackText.setText(R.string.shortcuts_hide_failed)
+        }
+    }
+
+    private fun AutoStartEvent.displayNameResource(): Int = when (this) {
+        AutoStartEvent.BOOT_COMPLETED -> R.string.auto_start_event_boot
+        AutoStartEvent.MY_PACKAGE_REPLACED -> R.string.auto_start_event_package_replaced
+        AutoStartEvent.SERVICE_RECOVERY -> R.string.auto_start_event_service_recovery
+        AutoStartEvent.UNKNOWN -> R.string.auto_start_event_unknown
+    }
+
+    private fun AutoStartResult.displayNameResource(): Int = when (this) {
+        AutoStartResult.START_REQUESTED -> R.string.auto_start_result_requested
+        AutoStartResult.AUTO_START_DISABLED -> R.string.auto_start_result_disabled
+        AutoStartResult.OVERLAY_PERMISSION_MISSING -> {
+            R.string.auto_start_result_overlay_permission
+        }
+
+        AutoStartResult.FIRST_APP_INVALID -> R.string.auto_start_result_first_app
+        AutoStartResult.SECOND_APP_INVALID -> R.string.auto_start_result_second_app
+        AutoStartResult.UNKNOWN_ACTION -> R.string.auto_start_result_unknown
+        AutoStartResult.FOREGROUND_START_NOT_ALLOWED -> R.string.auto_start_result_not_allowed
+        AutoStartResult.SECURITY_EXCEPTION -> R.string.auto_start_result_security
+        AutoStartResult.RUNTIME_EXCEPTION -> R.string.auto_start_result_runtime
     }
 
     private fun AppSlot.other(): AppSlot = when (this) {

@@ -45,6 +45,21 @@ class LauncherAppsRepository(
             }
             ?.let(::toInstalledApp)
 
+    fun validateLauncherActivities(selectedApps: List<SelectedApp>): List<Boolean> {
+        val availableComponents = queryLauncherActivities()
+            .mapNotNull { resolveInfo ->
+                val activityInfo = resolveInfo.activityInfo ?: return@mapNotNull null
+                if (!activityInfo.enabled || !activityInfo.applicationInfo.enabled) {
+                    return@mapNotNull null
+                }
+                ComponentName(activityInfo.packageName, activityInfo.name)
+            }
+            .toSet()
+        return selectedApps.map { selectedApp ->
+            ComponentName(selectedApp.packageName, selectedApp.activityName) in availableComponents
+        }
+    }
+
     private fun queryLauncherActivities(): List<ResolveInfo> {
         val launcherIntent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_LAUNCHER)
