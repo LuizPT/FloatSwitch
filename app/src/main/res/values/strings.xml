@@ -1,14 +1,29 @@
 <resources>
     <string name="app_name">FloatSwitch</string>
     <string name="screen_title">Atalhos flutuantes</string>
-    <string name="screen_description">Active dois atalhos de demonstração para aceder rapidamente ao FloatSwitch e às Definições enquanto utiliza outras aplicações.</string>
+    <string name="screen_description">Escolha duas aplicações para criar os atalhos flutuantes.</string>
+    <string name="application_one_label">Aplicação 1</string>
+    <string name="application_two_label">Aplicação 2</string>
+    <string name="no_application_selected">Nenhuma aplicação escolhida</string>
+    <string name="button_choose_application">Escolher</string>
+    <string name="button_change_application">Alterar</string>
+    <string name="no_application_icon_description">Posição sem aplicação escolhida</string>
+    <string name="application_icon_generic_description">Ícone da aplicação</string>
+    <string name="application_icon_description">Ícone de %1$s</string>
+    <string name="application_selection_saved">%1$s foi escolhida.</string>
+    <string name="duplicate_application_not_allowed">Escolha uma aplicação diferente para cada posição.</string>
+    <string name="invalid_application_selection_removed">Uma aplicação escolhida já não está disponível e foi removida da configuração.</string>
+    <string name="two_applications_required">Escolha duas aplicações válidas antes de mostrar os atalhos.</string>
+    <string name="app_picker_title">Escolher aplicação</string>
+    <string name="app_picker_search_hint">Pesquisar por nome</string>
+    <string name="app_picker_empty">Nenhuma aplicação encontrada.</string>
     <string name="overlay_permission_label">Mostrar sobre outras aplicações</string>
     <string name="overlay_permission_granted">Autorização concedida</string>
     <string name="overlay_permission_missing">Autorização em falta</string>
     <string name="button_grant_overlay_permission">Conceder autorização</string>
     <string name="button_show_shortcuts">Mostrar atalhos</string>
     <string name="button_hide_shortcuts">Ocultar atalhos</string>
-    <string name="initial_guidance">Conceda a autorização e escolha “Mostrar atalhos”.</string>
+    <string name="initial_guidance">Escolha duas aplicações, conceda a autorização e seleccione “Mostrar atalhos”.</string>
     <string name="overlay_permission_required">Para mostrar os atalhos, conceda primeiro a autorização “Mostrar sobre outras aplicações”.</string>
     <string name="notification_permission_explanation">Para manter uma notificação visível enquanto os atalhos estão activos, autorize as notificações.</string>
     <string name="notification_permission_denied">A autorização de notificações não foi concedida. Os atalhos não foram iniciados.</string>
@@ -18,10 +33,10 @@
     <string name="notification_channel_name">Atalhos flutuantes</string>
     <string name="notification_channel_description">Mantém o FloatSwitch activo enquanto os atalhos estão visíveis.</string>
     <string name="notification_title">FloatSwitch activo</string>
-    <string name="notification_text">Atalhos flutuantes de demonstração</string>
+    <string name="notification_text">Atalhos flutuantes activos</string>
     <string name="notification_action_hide">Ocultar</string>
-    <string name="overlay_button_open_app">Abrir o FloatSwitch</string>
-    <string name="overlay_button_open_settings">Abrir as Definições do Android</string>
+    <string name="overlay_button_open_application">Abrir %1$s</string>
+    <string name="application_launch_failed">Não foi possível abrir %1$s.</string>
     <string name="overlay_accessibility_title">Atalhos flutuantes do FloatSwitch</string>
     <string name="foreground_service_special_use_subtype" translatable="false">Persistent user-controlled floating application shortcuts</string>
 </resources>

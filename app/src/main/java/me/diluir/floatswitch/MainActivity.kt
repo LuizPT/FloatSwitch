@@ -1,6 +1,7 @@
 package me.diluir.floatswitch
 
 import android.Manifest
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -9,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,6 +23,14 @@ import androidx.core.view.WindowInsetsCompat
 class MainActivity : AppCompatActivity() {
     private lateinit var permissionStateText: TextView
     private lateinit var feedbackText: TextView
+    private lateinit var showShortcutsButton: Button
+    private lateinit var firstSlotViews: AppSlotViews
+    private lateinit var secondSlotViews: AppSlotViews
+    private lateinit var selectedAppsStore: SelectedAppsStore
+    private lateinit var launcherAppsRepository: LauncherAppsRepository
+
+    private var firstInstalledApp: InstalledLauncherApp? = null
+    private var secondInstalledApp: InstalledLauncherApp? = null
 
     private val overlayPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -38,24 +48,69 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val appPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_OK) return@registerForActivityResult
+
+        val slot = AppSlot.fromStorageKey(
+            result.data?.getStringExtra(AppPickerActivity.EXTRA_SLOT),
+        ) ?: return@registerForActivityResult
+        val selectedApp = SelectedAppCodec.decode(
+            result.data?.getStringExtra(AppPickerActivity.EXTRA_SELECTION),
+        ) ?: return@registerForActivityResult
+        val otherSelection = selectedAppsStore.load(slot.other())
+
+        if (!AppSelectionRules.canUseInSlot(selectedApp, otherSelection)) {
+            feedbackText.setText(R.string.duplicate_application_not_allowed)
+            return@registerForActivityResult
+        }
+
+        selectedAppsStore.save(slot, selectedApp)
+        refreshSelectedApplications(showInvalidFeedback = false)
+        feedbackText.text = getString(
+            R.string.application_selection_saved,
+            selectedApp.displayName,
+        )
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
+        selectedAppsStore = SelectedAppsStore(this)
+        launcherAppsRepository = LauncherAppsRepository(packageManager, packageName)
         permissionStateText = findViewById(R.id.overlayPermissionState)
         feedbackText = findViewById(R.id.feedbackText)
+        showShortcutsButton = findViewById(R.id.showShortcutsButton)
+        firstSlotViews = AppSlotViews(
+            icon = findViewById(R.id.applicationOneIcon),
+            name = findViewById(R.id.applicationOneName),
+            chooseButton = findViewById(R.id.chooseApplicationOneButton),
+        )
+        secondSlotViews = AppSlotViews(
+            icon = findViewById(R.id.applicationTwoIcon),
+            name = findViewById(R.id.applicationTwoName),
+            chooseButton = findViewById(R.id.chooseApplicationTwoButton),
+        )
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { view, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+            view.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
 
         findViewById<Button>(R.id.grantOverlayPermissionButton).setOnClickListener {
             openOverlayPermissionSettings()
         }
-        findViewById<Button>(R.id.showShortcutsButton).setOnClickListener {
+        firstSlotViews.chooseButton.setOnClickListener {
+            openApplicationPicker(AppSlot.FIRST)
+        }
+        secondSlotViews.chooseButton.setOnClickListener {
+            openApplicationPicker(AppSlot.SECOND)
+        }
+        showShortcutsButton.setOnClickListener {
             showShortcuts()
         }
         findViewById<Button>(R.id.hideShortcutsButton).setOnClickListener {
@@ -66,6 +121,89 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         updateOverlayPermissionState()
+        refreshSelectedApplications()
+    }
+
+    private fun openApplicationPicker(slot: AppSlot) {
+        val excludedPackageName = when (slot) {
+            AppSlot.FIRST -> secondInstalledApp?.selection?.packageName
+            AppSlot.SECOND -> firstInstalledApp?.selection?.packageName
+        }
+        appPickerLauncher.launch(
+            AppPickerActivity.createIntent(this, slot, excludedPackageName),
+        )
+    }
+
+    private fun refreshSelectedApplications(showInvalidFeedback: Boolean = true) {
+        var invalidSelectionRemoved = false
+        firstInstalledApp = loadValidSelection(AppSlot.FIRST) {
+            invalidSelectionRemoved = true
+        }
+        secondInstalledApp = loadValidSelection(AppSlot.SECOND) {
+            invalidSelectionRemoved = true
+        }
+
+        if (
+            firstInstalledApp != null &&
+            firstInstalledApp?.selection?.packageName == secondInstalledApp?.selection?.packageName
+        ) {
+            selectedAppsStore.clear(AppSlot.SECOND)
+            secondInstalledApp = null
+            invalidSelectionRemoved = true
+        }
+
+        updateSlotViews(firstSlotViews, firstInstalledApp)
+        updateSlotViews(secondSlotViews, secondInstalledApp)
+        showShortcutsButton.isEnabled = firstInstalledApp != null && secondInstalledApp != null
+
+        if (invalidSelectionRemoved && showInvalidFeedback) {
+            feedbackText.setText(R.string.invalid_application_selection_removed)
+        }
+    }
+
+    private fun loadValidSelection(
+        slot: AppSlot,
+        onInvalid: () -> Unit,
+    ): InstalledLauncherApp? {
+        val savedSelection = selectedAppsStore.load(slot) ?: return null
+        val installedApp = launcherAppsRepository.findInstalledApp(savedSelection)
+        if (installedApp == null) {
+            selectedAppsStore.clear(slot)
+            onInvalid()
+            return null
+        }
+
+        if (installedApp.selection != savedSelection) {
+            selectedAppsStore.save(slot, installedApp.selection)
+        }
+        return installedApp
+    }
+
+    private fun updateSlotViews(
+        slotViews: AppSlotViews,
+        installedApp: InstalledLauncherApp?,
+    ) {
+        if (installedApp == null) {
+            slotViews.icon.setImageResource(R.drawable.ic_app_placeholder)
+            slotViews.icon.imageTintList = ColorStateList.valueOf(
+                ContextCompat.getColor(this, R.color.overlay_icon),
+            )
+            slotViews.icon.contentDescription = getString(
+                R.string.no_application_icon_description,
+            )
+            slotViews.name.setText(R.string.no_application_selected)
+            slotViews.chooseButton.setText(R.string.button_choose_application)
+            return
+        }
+
+        slotViews.icon.imageTintList = null
+        slotViews.icon.setImageDrawable(installedApp.icon)
+        slotViews.icon.contentDescription = getString(
+            R.string.application_icon_description,
+            installedApp.selection.displayName,
+        )
+        slotViews.name.text = installedApp.selection.displayName
+        slotViews.chooseButton.setText(R.string.button_change_application)
     }
 
     private fun openOverlayPermissionSettings() {
@@ -108,6 +246,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showShortcuts() {
+        refreshSelectedApplications()
+        if (firstInstalledApp == null || secondInstalledApp == null) {
+            feedbackText.setText(R.string.two_applications_required)
+            return
+        }
+
         if (!Settings.canDrawOverlays(this)) {
             updateOverlayPermissionState()
             feedbackText.setText(R.string.overlay_permission_required)
@@ -141,4 +285,15 @@ class MainActivity : AppCompatActivity() {
         stopService(Intent(this, OverlayService::class.java))
         feedbackText.setText(R.string.shortcuts_hidden)
     }
+
+    private fun AppSlot.other(): AppSlot = when (this) {
+        AppSlot.FIRST -> AppSlot.SECOND
+        AppSlot.SECOND -> AppSlot.FIRST
+    }
+
+    private data class AppSlotViews(
+        val icon: ImageView,
+        val name: TextView,
+        val chooseButton: Button,
+    )
 }

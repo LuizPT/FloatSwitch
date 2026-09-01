@@ -41,6 +41,116 @@
                 android:textColor="@color/screen_text_secondary"
                 android:textSize="@dimen/text_size_body" />
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_large"
+                android:background="@drawable/app_selection_background"
+                android:orientation="vertical"
+                android:padding="@dimen/app_slot_padding">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/application_one_label"
+                    android:textColor="@color/screen_text_primary"
+                    android:textSize="@dimen/text_size_label"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_small"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:id="@+id/applicationOneIcon"
+                        android:layout_width="@dimen/app_slot_icon_size"
+                        android:layout_height="@dimen/app_slot_icon_size"
+                        android:contentDescription="@string/no_application_icon_description"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_app_placeholder"
+                        app:tint="@color/overlay_icon" />
+
+                    <TextView
+                        android:id="@+id/applicationOneName"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="@dimen/spacing_medium"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:maxLines="2"
+                        android:text="@string/no_application_selected"
+                        android:textColor="@color/screen_text_secondary"
+                        android:textSize="@dimen/text_size_body" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/chooseApplicationOneButton"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minHeight="@dimen/app_slot_button_min_height"
+                        android:text="@string/button_choose_application"
+                        android:textAllCaps="false" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_small"
+                android:background="@drawable/app_selection_background"
+                android:orientation="vertical"
+                android:padding="@dimen/app_slot_padding">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/application_two_label"
+                    android:textColor="@color/screen_text_primary"
+                    android:textSize="@dimen/text_size_label"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_small"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:id="@+id/applicationTwoIcon"
+                        android:layout_width="@dimen/app_slot_icon_size"
+                        android:layout_height="@dimen/app_slot_icon_size"
+                        android:contentDescription="@string/no_application_icon_description"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_app_placeholder"
+                        app:tint="@color/overlay_icon" />
+
+                    <TextView
+                        android:id="@+id/applicationTwoName"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="@dimen/spacing_medium"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:maxLines="2"
+                        android:text="@string/no_application_selected"
+                        android:textColor="@color/screen_text_secondary"
+                        android:textSize="@dimen/text_size_body" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/chooseApplicationTwoButton"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minHeight="@dimen/app_slot_button_min_height"
+                        android:text="@string/button_choose_application"
+                        android:textAllCaps="false" />
+                </LinearLayout>
+            </LinearLayout>
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -76,6 +186,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_small"
+                android:enabled="false"
                 android:minHeight="@dimen/action_button_min_height"
                 android:text="@string/button_show_shortcuts"
                 android:textAllCaps="false" />

@@ -6,9 +6,9 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.content.res.ColorStateList
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Handler
@@ -21,12 +21,15 @@ import android.view.WindowManager
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
 
 class OverlayService : Service() {
     private lateinit var windowManager: WindowManager
+    private lateinit var selectedAppsStore: SelectedAppsStore
+    private lateinit var launcherAppsRepository: LauncherAppsRepository
     private var overlayView: View? = null
+    private var overlayButtons: List<ImageButton> = emptyList()
     private val permissionHandler = Handler(Looper.getMainLooper())
     private val permissionCheck = object : Runnable {
         override fun run() {
@@ -41,6 +44,8 @@ class OverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
         windowManager = getSystemService(WindowManager::class.java)
+        selectedAppsStore = SelectedAppsStore(this)
+        launcherAppsRepository = LauncherAppsRepository(packageManager, packageName)
         createNotificationChannel()
         startForegroundImmediately()
     }
@@ -56,7 +61,13 @@ class OverlayService : Service() {
             return START_NOT_STICKY
         }
 
-        showOverlayIfNeeded()
+        val installedApps = loadSelectedApplications()
+        if (installedApps == null) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        showOrUpdateOverlay(installedApps)
         schedulePermissionCheck()
         return START_NOT_STICKY
     }
@@ -73,6 +84,7 @@ class OverlayService : Service() {
             }
         }
         overlayView = null
+        overlayButtons = emptyList()
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
@@ -141,30 +153,51 @@ class OverlayService : Service() {
             .build()
     }
 
-    private fun showOverlayIfNeeded() {
-        if (overlayView != null) return
+    private fun loadSelectedApplications(): List<InstalledLauncherApp>? {
+        val installedApps = AppSlot.values().map { slot ->
+            val savedSelection = selectedAppsStore.load(slot) ?: return null
+            val installedApp = launcherAppsRepository.findInstalledApp(savedSelection)
+            if (installedApp == null) {
+                selectedAppsStore.clear(slot)
+                return null
+            }
+            if (installedApp.selection != savedSelection) {
+                selectedAppsStore.save(slot, installedApp.selection)
+            }
+            installedApp
+        }
 
+        if (
+            installedApps[0].selection.packageName ==
+            installedApps[1].selection.packageName
+        ) {
+            selectedAppsStore.clear(AppSlot.SECOND)
+            return null
+        }
+        return installedApps
+    }
+
+    private fun showOrUpdateOverlay(installedApps: List<InstalledLauncherApp>) {
+        if (overlayView == null) {
+            createOverlay(installedApps)
+        } else {
+            updateOverlayButtons(installedApps)
+        }
+    }
+
+    private fun createOverlay(installedApps: List<InstalledLauncherApp>) {
         val buttonSize = resources.getDimensionPixelSize(R.dimen.overlay_button_size)
         val buttonSpacing = resources.getDimensionPixelSize(R.dimen.overlay_button_spacing)
+        val buttons = installedApps.map { createOverlayButton() }
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             addView(
-                createOverlayButton(
-                    iconResource = R.drawable.ic_overlay_app,
-                    descriptionResource = R.string.overlay_button_open_app,
-                ) {
-                    openActivity(Intent(this@OverlayService, MainActivity::class.java))
-                },
+                buttons[0],
                 LinearLayout.LayoutParams(buttonSize, buttonSize),
             )
             addView(
-                createOverlayButton(
-                    iconResource = R.drawable.ic_overlay_settings,
-                    descriptionResource = R.string.overlay_button_open_settings,
-                ) {
-                    openActivity(Intent(Settings.ACTION_SETTINGS))
-                },
+                buttons[1],
                 LinearLayout.LayoutParams(buttonSize, buttonSize).apply {
                     topMargin = buttonSpacing
                 },
@@ -183,39 +216,75 @@ class OverlayService : Service() {
             setTitle(getString(R.string.overlay_accessibility_title))
         }
 
+        overlayButtons = buttons
+        updateOverlayButtons(installedApps)
         try {
             windowManager.addView(container, layoutParams)
             overlayView = container
         } catch (_: RuntimeException) {
+            overlayButtons = emptyList()
             stopSelf()
         }
     }
 
-    private fun createOverlayButton(
-        iconResource: Int,
-        descriptionResource: Int,
-        onClick: () -> Unit,
-    ): ImageButton = ImageButton(this).apply {
-        setImageResource(iconResource)
-        imageTintList = ColorStateList.valueOf(
-            ContextCompat.getColor(this@OverlayService, R.color.overlay_icon),
-        )
+    private fun createOverlayButton(): ImageButton = ImageButton(this).apply {
         setBackgroundResource(R.drawable.overlay_button_background)
-        contentDescription = getString(descriptionResource)
-        scaleType = ImageView.ScaleType.CENTER
+        scaleType = ImageView.ScaleType.CENTER_INSIDE
         val iconPadding = resources.getDimensionPixelSize(R.dimen.overlay_button_icon_padding)
         setPadding(iconPadding, iconPadding, iconPadding, iconPadding)
         elevation = resources.getDimension(R.dimen.overlay_button_elevation)
-        setOnClickListener { onClick() }
     }
 
-    private fun openActivity(intent: Intent) {
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        try {
-            startActivity(intent)
-        } catch (_: ActivityNotFoundException) {
-            // As duas actividades são do sistema/aplicação, mas uma ROM pode removê-las.
+    private fun updateOverlayButtons(installedApps: List<InstalledLauncherApp>) {
+        if (overlayButtons.size != installedApps.size) return
+
+        overlayButtons.zip(installedApps).forEach { (button, installedApp) ->
+            button.imageTintList = null
+            button.setImageDrawable(installedApp.icon)
+            button.contentDescription = getString(
+                R.string.overlay_button_open_application,
+                installedApp.selection.displayName,
+            )
+            button.setOnClickListener {
+                openSelectedApplication(installedApp.selection)
+            }
         }
+    }
+
+    private fun openSelectedApplication(selectedApp: SelectedApp) {
+        val explicitLauncherIntent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_LAUNCHER)
+            component = ComponentName(selectedApp.packageName, selectedApp.activityName)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+        }
+        if (tryStartActivity(explicitLauncherIntent)) return
+
+        val fallbackIntent = try {
+            packageManager.getLaunchIntentForPackage(selectedApp.packageName)
+        } catch (_: SecurityException) {
+            null
+        }
+        if (fallbackIntent != null) {
+            fallbackIntent.addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED,
+            )
+            if (tryStartActivity(fallbackIntent)) return
+        }
+
+        Toast.makeText(
+            this,
+            getString(R.string.application_launch_failed, selectedApp.displayName),
+            Toast.LENGTH_SHORT,
+        ).show()
+    }
+
+    private fun tryStartActivity(intent: Intent): Boolean = try {
+        startActivity(intent)
+        true
+    } catch (_: ActivityNotFoundException) {
+        false
+    } catch (_: SecurityException) {
+        false
     }
 
     private fun schedulePermissionCheck() {

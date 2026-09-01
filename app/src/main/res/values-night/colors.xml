@@ -7,6 +7,8 @@
     <color name="status_granted_text">#FFA8E6B2</color>
     <color name="status_missing_background">#FF4D2220</color>
     <color name="status_missing_text">#FFFFB4AB</color>
+    <color name="app_slot_background">#FF1D2025</color>
+    <color name="app_list_divider">#FF3F444C</color>
     <color name="overlay_button_background">#FF253348</color>
     <color name="overlay_button_pressed">#FF354B68</color>
     <color name="overlay_icon">#FFA8C7FA</color>
