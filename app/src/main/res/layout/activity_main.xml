@@ -41,6 +41,14 @@
                 android:textColor="@color/screen_text_secondary"
                 android:textSize="@dimen/text_size_body" />
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_small"
+                android:text="@string/overlay_move_guidance"
+                android:textColor="@color/screen_text_secondary"
+                android:textSize="@dimen/text_size_body" />
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

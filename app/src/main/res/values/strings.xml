@@ -2,6 +2,7 @@
     <string name="app_name">FloatSwitch</string>
     <string name="screen_title">Atalhos flutuantes</string>
     <string name="screen_description">Escolha duas aplicações para criar os atalhos flutuantes.</string>
+    <string name="overlay_move_guidance">Mantenha premido um atalho para mover o conjunto.</string>
     <string name="application_one_label">Aplicação 1</string>
     <string name="application_two_label">Aplicação 2</string>
     <string name="no_application_selected">Nenhuma aplicação escolhida</string>
@@ -35,7 +36,7 @@
     <string name="notification_title">FloatSwitch activo</string>
     <string name="notification_text">Atalhos flutuantes activos</string>
     <string name="notification_action_hide">Ocultar</string>
-    <string name="overlay_button_open_application">Abrir %1$s</string>
+    <string name="overlay_button_open_application">%1$s. Toque para abrir. Mantenha premido para mover o conjunto.</string>
     <string name="application_launch_failed">Não foi possível abrir %1$s.</string>
     <string name="overlay_accessibility_title">Atalhos flutuantes do FloatSwitch</string>
     <string name="foreground_service_special_use_subtype" translatable="false">Persistent user-controlled floating application shortcuts</string>

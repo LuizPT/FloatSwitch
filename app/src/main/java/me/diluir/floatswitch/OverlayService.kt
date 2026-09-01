@@ -7,29 +7,54 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
+import android.graphics.Point
+import android.graphics.Rect
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
+import androidx.appcompat.widget.AppCompatImageButton
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import kotlin.math.hypot
+import kotlin.math.roundToInt
 
 class OverlayService : Service() {
     private lateinit var windowManager: WindowManager
     private lateinit var selectedAppsStore: SelectedAppsStore
     private lateinit var launcherAppsRepository: LauncherAppsRepository
+    private lateinit var overlayPositionStore: OverlayPositionStore
     private var overlayView: View? = null
     private var overlayButtons: List<ImageButton> = emptyList()
+    private var currentPosition = OverlayPositionRules.defaultPosition
+    private var activePointerId = MotionEvent.INVALID_POINTER_ID
+    private var gestureView: View? = null
+    private var downRawX = 0f
+    private var downRawY = 0f
+    private var dragStartX = 0
+    private var dragStartY = 0
+    private var touchMovedBeyondSlop = false
+    private var dragStarted = false
+    private val gestureHandler = Handler(Looper.getMainLooper())
+    private val touchSlop by lazy { ViewConfiguration.get(this).scaledTouchSlop }
+    private val longPressAction = Runnable { startDragging() }
     private val permissionHandler = Handler(Looper.getMainLooper())
     private val permissionCheck = object : Runnable {
         override fun run() {
@@ -46,6 +71,8 @@ class OverlayService : Service() {
         windowManager = getSystemService(WindowManager::class.java)
         selectedAppsStore = SelectedAppsStore(this)
         launcherAppsRepository = LauncherAppsRepository(packageManager, packageName)
+        overlayPositionStore = OverlayPositionStore(this)
+        currentPosition = overlayPositionStore.load()
         createNotificationChannel()
         startForegroundImmediately()
     }
@@ -74,8 +101,15 @@ class OverlayService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        overlayView?.post { restoreOverlayPosition() }
+    }
+
     override fun onDestroy() {
         permissionHandler.removeCallbacks(permissionCheck)
+        gestureHandler.removeCallbacksAndMessages(null)
+        resetGestureState()
         overlayView?.let { view ->
             try {
                 windowManager.removeView(view)
@@ -192,6 +226,7 @@ class OverlayService : Service() {
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
             addView(
                 buttons[0],
                 LinearLayout.LayoutParams(buttonSize, buttonSize),
@@ -210,10 +245,26 @@ class OverlayService : Service() {
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT,
         ).apply {
-            gravity = Gravity.END or Gravity.CENTER_VERTICAL
-            x = resources.getDimensionPixelSize(R.dimen.overlay_edge_margin)
+            gravity = Gravity.START or Gravity.TOP
+            x = 0
             y = 0
             setTitle(getString(R.string.overlay_accessibility_title))
+        }
+
+        container.addOnLayoutChangeListener { _, left, top, right, bottom,
+            oldLeft, oldTop, oldRight, oldBottom,
+            ->
+            val sizeChanged = right - left != oldRight - oldLeft ||
+                bottom - top != oldBottom - oldTop
+            if (sizeChanged && !dragStarted) {
+                container.post { restoreOverlayPosition() }
+            }
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(container) { _, insets ->
+            if (!dragStarted) {
+                container.post { restoreOverlayPosition() }
+            }
+            insets
         }
 
         overlayButtons = buttons
@@ -221,13 +272,15 @@ class OverlayService : Service() {
         try {
             windowManager.addView(container, layoutParams)
             overlayView = container
+            ViewCompat.requestApplyInsets(container)
+            container.post { restoreOverlayPosition() }
         } catch (_: RuntimeException) {
             overlayButtons = emptyList()
             stopSelf()
         }
     }
 
-    private fun createOverlayButton(): ImageButton = ImageButton(this).apply {
+    private fun createOverlayButton(): ImageButton = OverlayImageButton(this).apply {
         setBackgroundResource(R.drawable.overlay_button_background)
         scaleType = ImageView.ScaleType.CENTER_INSIDE
         val iconPadding = resources.getDimensionPixelSize(R.dimen.overlay_button_icon_padding)
@@ -250,6 +303,233 @@ class OverlayService : Service() {
             }
         }
     }
+
+    private fun handleOverlayTouch(view: View, event: MotionEvent): Boolean =
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                beginGesture(view, event)
+                false
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                updateGesture(event)
+                false
+            }
+
+            MotionEvent.ACTION_POINTER_DOWN -> false
+            MotionEvent.ACTION_POINTER_UP -> {
+                handlePointerUp(event)
+                false
+            }
+
+            MotionEvent.ACTION_UP -> finishGesture(event)
+            MotionEvent.ACTION_CANCEL -> {
+                cancelGesture()
+                false
+            }
+
+            else -> false
+        }
+
+    private fun beginGesture(view: View, event: MotionEvent) {
+        resetGestureState()
+        activePointerId = event.getPointerId(0)
+        gestureView = view
+        downRawX = rawX(event, 0)
+        downRawY = rawY(event, 0)
+        view.isPressed = true
+        gestureHandler.postDelayed(longPressAction, ViewConfiguration.getLongPressTimeout().toLong())
+    }
+
+    private fun updateGesture(event: MotionEvent) {
+        val pointerIndex = event.findPointerIndex(activePointerId)
+        if (pointerIndex < 0) {
+            cancelGesture()
+            return
+        }
+
+        val currentRawX = rawX(event, pointerIndex)
+        val currentRawY = rawY(event, pointerIndex)
+        if (!dragStarted) {
+            val distance = hypot(
+                (currentRawX - downRawX).toDouble(),
+                (currentRawY - downRawY).toDouble(),
+            )
+            if (distance > touchSlop) {
+                touchMovedBeyondSlop = true
+                gestureView?.isPressed = false
+                gestureHandler.removeCallbacks(longPressAction)
+            }
+            return
+        }
+
+        moveOverlayTo(
+            x = dragStartX + (currentRawX - downRawX).roundToInt(),
+            y = dragStartY + (currentRawY - downRawY).roundToInt(),
+        )
+    }
+
+    private fun handlePointerUp(event: MotionEvent) {
+        val pointerIndex = event.actionIndex
+        if (event.getPointerId(pointerIndex) != activePointerId) return
+
+        if (dragStarted) {
+            moveOverlayTo(
+                x = dragStartX + (rawX(event, pointerIndex) - downRawX).roundToInt(),
+                y = dragStartY + (rawY(event, pointerIndex) - downRawY).roundToInt(),
+            )
+            finishDragging()
+        } else {
+            resetGestureState()
+        }
+    }
+
+    private fun finishGesture(event: MotionEvent): Boolean {
+        if (event.getPointerId(event.actionIndex) != activePointerId) {
+            resetGestureState()
+            return false
+        }
+
+        return if (dragStarted) {
+            updateGesture(event)
+            finishDragging()
+            false
+        } else {
+            val shouldClick = !touchMovedBeyondSlop
+            resetGestureState()
+            shouldClick
+        }
+    }
+
+    private fun cancelGesture() {
+        if (dragStarted) {
+            finishDragging()
+        } else {
+            resetGestureState()
+        }
+    }
+
+    private fun startDragging() {
+        val container = overlayView ?: return
+        val params = container.layoutParams as? WindowManager.LayoutParams ?: return
+        if (activePointerId == MotionEvent.INVALID_POINTER_ID || touchMovedBeyondSlop) return
+
+        dragStarted = true
+        dragStartX = params.x
+        dragStartY = params.y
+        gestureView?.isPressed = false
+        gestureView?.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        container.alpha = DRAGGING_ALPHA
+    }
+
+    private fun moveOverlayTo(x: Int, y: Int) {
+        val container = overlayView ?: return
+        if (container.width == 0 || container.height == 0) return
+        val params = container.layoutParams as? WindowManager.LayoutParams ?: return
+        val bounds = calculateMovementBounds(container)
+        val limitedPosition = OverlayPositionMath.clamp(x, y, bounds)
+        params.x = limitedPosition.x
+        params.y = limitedPosition.y
+        updateOverlayLayout(container, params)
+    }
+
+    private fun finishDragging() {
+        val container = overlayView
+        val params = container?.layoutParams as? WindowManager.LayoutParams
+        if (container != null && params != null && container.width > 0 && container.height > 0) {
+            val bounds = calculateMovementBounds(container)
+            val limitedPosition = OverlayPositionMath.clamp(params.x, params.y, bounds)
+            val side = OverlayPositionMath.nearestSide(limitedPosition.x, bounds)
+            params.x = OverlayPositionMath.xForSide(side, bounds)
+            params.y = limitedPosition.y
+            updateOverlayLayout(container, params)
+
+            currentPosition = OverlayPosition(
+                side = side,
+                verticalFraction = OverlayPositionMath.normalizeVertical(params.y, bounds),
+            )
+            overlayPositionStore.save(currentPosition)
+        }
+        resetGestureState()
+    }
+
+    private fun resetGestureState() {
+        gestureHandler.removeCallbacks(longPressAction)
+        gestureView?.isPressed = false
+        overlayView?.alpha = 1f
+        activePointerId = MotionEvent.INVALID_POINTER_ID
+        gestureView = null
+        touchMovedBeyondSlop = false
+        dragStarted = false
+    }
+
+    private fun restoreOverlayPosition() {
+        val container = overlayView ?: return
+        if (dragStarted || container.width == 0 || container.height == 0) return
+        val params = container.layoutParams as? WindowManager.LayoutParams ?: return
+        val bounds = calculateMovementBounds(container)
+        currentPosition = OverlayPositionRules.sanitize(currentPosition)
+        params.x = OverlayPositionMath.xForSide(currentPosition.side, bounds)
+        params.y = OverlayPositionMath.restoreVertical(
+            currentPosition.verticalFraction,
+            bounds,
+        )
+        updateOverlayLayout(container, params)
+    }
+
+    private fun calculateMovementBounds(view: View): OverlayMovementBounds {
+        val usableBounds = calculateUsableScreenBounds(view)
+        val margin = resources.getDimensionPixelSize(R.dimen.overlay_edge_margin)
+        return OverlayPositionMath.movementBounds(
+            screenLeft = usableBounds.left,
+            screenTop = usableBounds.top,
+            screenRight = usableBounds.right,
+            screenBottom = usableBounds.bottom,
+            overlayWidth = view.width,
+            overlayHeight = view.height,
+            margin = margin,
+        )
+    }
+
+    private fun calculateUsableScreenBounds(view: View): Rect {
+        val screenBounds = getScreenBounds()
+        val insets = ViewCompat.getRootWindowInsets(view)?.getInsetsIgnoringVisibility(
+            WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
+        )
+        val left = screenBounds.left + (insets?.left ?: 0)
+        val top = screenBounds.top + (insets?.top ?: 0)
+        val right = (screenBounds.right - (insets?.right ?: 0)).coerceAtLeast(left)
+        val bottom = (screenBounds.bottom - (insets?.bottom ?: 0)).coerceAtLeast(top)
+        return Rect(left, top, right, bottom)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun getScreenBounds(): Rect = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        Rect(windowManager.currentWindowMetrics.bounds)
+    } else {
+        val displaySize = Point()
+        windowManager.defaultDisplay.getRealSize(displaySize)
+        Rect(0, 0, displaySize.x, displaySize.y)
+    }
+
+    private fun updateOverlayLayout(
+        view: View,
+        params: WindowManager.LayoutParams,
+    ) {
+        try {
+            windowManager.updateViewLayout(view, params)
+        } catch (_: IllegalArgumentException) {
+            stopSelf()
+        } catch (_: SecurityException) {
+            stopSelf()
+        }
+    }
+
+    private fun rawX(event: MotionEvent, pointerIndex: Int): Float =
+        event.rawX + event.getX(pointerIndex) - event.x
+
+    private fun rawY(event: MotionEvent, pointerIndex: Int): Float =
+        event.rawY + event.getY(pointerIndex) - event.y
 
     private fun openSelectedApplication(selectedApp: SelectedApp) {
         val explicitLauncherIntent = Intent(Intent.ACTION_MAIN).apply {
@@ -292,6 +572,18 @@ class OverlayService : Service() {
         permissionHandler.postDelayed(permissionCheck, PERMISSION_CHECK_INTERVAL_MS)
     }
 
+    private inner class OverlayImageButton(context: Context) : AppCompatImageButton(context) {
+        override fun onTouchEvent(event: MotionEvent): Boolean {
+            val shouldClick = handleOverlayTouch(this, event)
+            if (event.actionMasked == MotionEvent.ACTION_UP && shouldClick) {
+                performClick()
+            }
+            return true
+        }
+
+        override fun performClick(): Boolean = super.performClick()
+    }
+
     companion object {
         const val ACTION_SHOW = "me.diluir.floatswitch.action.SHOW_OVERLAY"
         const val ACTION_HIDE = "me.diluir.floatswitch.action.HIDE_OVERLAY"
@@ -301,5 +593,6 @@ class OverlayService : Service() {
         private const val REQUEST_OPEN_APP = 1002
         private const val REQUEST_HIDE = 1003
         private const val PERMISSION_CHECK_INTERVAL_MS = 5_000L
+        private const val DRAGGING_ALPHA = 0.85f
     }
 }
