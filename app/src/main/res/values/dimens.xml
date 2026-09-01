@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="screen_content_max_width">720dp</dimen>
+    <dimen name="screen_content_padding">24dp</dimen>
+    <dimen name="spacing_small">8dp</dimen>
+    <dimen name="spacing_medium">16dp</dimen>
+    <dimen name="spacing_large">24dp</dimen>
+    <dimen name="status_padding">14dp</dimen>
+    <dimen name="status_corner_radius">12dp</dimen>
+    <dimen name="action_button_min_height">56dp</dimen>
+    <dimen name="feedback_min_height">48dp</dimen>
+    <dimen name="text_size_title">28sp</dimen>
+    <dimen name="text_size_label">18sp</dimen>
+    <dimen name="text_size_body">16sp</dimen>
+    <dimen name="overlay_button_size">64dp</dimen>
+    <dimen name="overlay_button_spacing">6dp</dimen>
+    <dimen name="overlay_button_corner_radius">18dp</dimen>
+    <dimen name="overlay_button_icon_padding">16dp</dimen>
+    <dimen name="overlay_button_elevation">6dp</dimen>
+    <dimen name="overlay_edge_margin">12dp</dimen>
+</resources>

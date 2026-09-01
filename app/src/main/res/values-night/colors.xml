@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="screen_background">#FF121316</color>
+    <color name="screen_text_primary">#FFE3E2E6</color>
+    <color name="screen_text_secondary">#FFC4C6D0</color>
+    <color name="status_granted_background">#FF123D20</color>
+    <color name="status_granted_text">#FFA8E6B2</color>
+    <color name="status_missing_background">#FF4D2220</color>
+    <color name="status_missing_text">#FFFFB4AB</color>
+    <color name="overlay_button_background">#FF253348</color>
+    <color name="overlay_button_pressed">#FF354B68</color>
+    <color name="overlay_icon">#FFA8C7FA</color>
+</resources>
