@@ -1,6 +1,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">FloatSwitch</string>
     <string name="screen_title">Atalhos flutuantes</string>
+    <string name="overlay_switch_content_description">Activar ou ocultar os atalhos flutuantes</string>
     <string name="screen_description">Escolha entre uma e seis aplicações e ordene os atalhos flutuantes.</string>
     <string name="overlay_move_guidance">Mantenha premido um atalho para mover o conjunto.</string>
     <string name="button_change_application">Alterar</string>
@@ -54,9 +55,7 @@
     <string name="auto_start_result_not_allowed">falhou: Android não permitiu iniciar o serviço em primeiro plano</string>
     <string name="auto_start_result_security">falhou: autorização de sistema insuficiente</string>
     <string name="auto_start_result_runtime">falhou: erro ao pedir o serviço</string>
-    <string name="button_show_shortcuts">Mostrar atalhos</string>
-    <string name="button_hide_shortcuts">Ocultar atalhos</string>
-    <string name="initial_guidance">Escolha pelo menos uma aplicação, conceda a autorização e seleccione “Mostrar atalhos”.</string>
+    <string name="initial_guidance">Escolha pelo menos uma aplicação, conceda a autorização e active os atalhos no interruptor.</string>
     <string name="overlay_permission_required">Para mostrar os atalhos, conceda primeiro a autorização “Mostrar sobre outras aplicações”.</string>
     <string name="notification_permission_explanation">Para manter uma notificação visível enquanto os atalhos estão activos, autorize as notificações.</string>
     <string name="notification_permission_denied">A autorização de notificações não foi concedida. Os atalhos não foram iniciados.</string>

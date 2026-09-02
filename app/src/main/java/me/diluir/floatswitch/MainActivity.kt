@@ -31,7 +31,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var feedbackText: TextView
     private lateinit var autoStartDiagnosticText: TextView
     private lateinit var autoStartSwitch: SwitchCompat
-    private lateinit var showShortcutsButton: Button
+    private lateinit var overlaySwitch: SwitchCompat
     private lateinit var addApplicationButton: Button
     private lateinit var applicationCountText: TextView
     private lateinit var applicationsContainer: LinearLayout
@@ -41,18 +41,24 @@ class MainActivity : AppCompatActivity() {
 
     private var installedApps: List<InstalledLauncherApp> = emptyList()
     private var updatingAutoStartSwitch = false
+    private var updatingOverlaySwitch = false
 
     private val overlayPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) {
         updateOverlayPermissionState()
+        refreshSelectedApplications()
     }
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         if (granted) showShortcuts()
-        else feedbackText.setText(R.string.notification_permission_denied)
+        else {
+            autoStartStateStore.setOverlayRequestedActive(false)
+            setOverlaySwitchChecked(false)
+            feedbackText.setText(R.string.notification_permission_denied)
+        }
     }
 
     private val appPickerLauncher = registerForActivityResult(
@@ -112,7 +118,7 @@ class MainActivity : AppCompatActivity() {
         feedbackText = findViewById(R.id.feedbackText)
         autoStartDiagnosticText = findViewById(R.id.autoStartDiagnostic)
         autoStartSwitch = findViewById(R.id.autoStartSwitch)
-        showShortcutsButton = findViewById(R.id.showShortcutsButton)
+        overlaySwitch = findViewById(R.id.overlaySwitch)
         addApplicationButton = findViewById(R.id.addApplicationButton)
         applicationCountText = findViewById(R.id.applicationCountText)
         applicationsContainer = findViewById(R.id.selectedApplicationsContainer)
@@ -129,8 +135,11 @@ class MainActivity : AppCompatActivity() {
         addApplicationButton.setOnClickListener {
             openApplicationPicker(AppPickerActivity.APPEND_INDEX)
         }
-        showShortcutsButton.setOnClickListener { showShortcuts() }
-        findViewById<Button>(R.id.hideShortcutsButton).setOnClickListener { hideShortcuts() }
+        overlaySwitch.setOnCheckedChangeListener { _, enabled ->
+            if (!updatingOverlaySwitch) {
+                if (enabled) showShortcuts() else hideShortcuts()
+            }
+        }
         autoStartSwitch.setOnCheckedChangeListener { _, enabled ->
             if (!updatingAutoStartSwitch) changeAutoStartPreference(enabled)
         }
@@ -141,6 +150,11 @@ class MainActivity : AppCompatActivity() {
         updateOverlayPermissionState()
         refreshSelectedApplications()
         updateAutoStartInformation()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && ::overlaySwitch.isInitialized) synchronizeOverlaySwitch()
     }
 
     private fun openApplicationPicker(selectionIndex: Int) {
@@ -161,7 +175,6 @@ class MainActivity : AppCompatActivity() {
         if (refreshedSelections != stored) selectedAppsStore.save(refreshedSelections)
 
         renderApplications()
-        showShortcutsButton.isEnabled = installedApps.isNotEmpty()
         addApplicationButton.isEnabled = installedApps.size < SelectedAppsRules.MAX_APPLICATIONS
 
         if (invalidSelectionRemoved && showInvalidFeedback) {
@@ -170,6 +183,7 @@ class MainActivity : AppCompatActivity() {
         if (installedApps.isEmpty() && autoStartStateStore.isOverlayRequestedActive()) {
             hideShortcuts(announce = false)
         }
+        synchronizeOverlaySwitch()
     }
 
     private fun renderApplications() {
@@ -349,13 +363,34 @@ class MainActivity : AppCompatActivity() {
         updatingAutoStartSwitch = false
     }
 
+    private fun synchronizeOverlaySwitch() {
+        val canShowOverlay = installedApps.isNotEmpty() && Settings.canDrawOverlays(this)
+        if (!canShowOverlay && autoStartStateStore.isOverlayRequestedActive()) {
+            hideShortcuts(announce = false)
+        }
+        overlaySwitch.isEnabled = canShowOverlay
+        setOverlaySwitchChecked(
+            canShowOverlay && autoStartStateStore.isOverlayRequestedActive(),
+        )
+    }
+
+    private fun setOverlaySwitchChecked(checked: Boolean) {
+        updatingOverlaySwitch = true
+        overlaySwitch.isChecked = checked
+        updatingOverlaySwitch = false
+    }
+
     private fun showShortcuts() {
         refreshSelectedApplications()
         if (installedApps.isEmpty()) {
+            autoStartStateStore.setOverlayRequestedActive(false)
+            setOverlaySwitchChecked(false)
             feedbackText.setText(R.string.at_least_one_application_required)
             return
         }
         if (!Settings.canDrawOverlays(this)) {
+            autoStartStateStore.setOverlayRequestedActive(false)
+            setOverlaySwitchChecked(false)
             updateOverlayPermissionState()
             feedbackText.setText(R.string.overlay_permission_required)
             return
@@ -367,6 +402,7 @@ class MainActivity : AppCompatActivity() {
                 Manifest.permission.POST_NOTIFICATIONS,
             ) != PackageManager.PERMISSION_GRANTED
         ) {
+            setOverlaySwitchChecked(false)
             feedbackText.setText(R.string.notification_permission_explanation)
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             return
@@ -377,14 +413,18 @@ class MainActivity : AppCompatActivity() {
                 Intent(this, OverlayService::class.java).setAction(OverlayService.ACTION_SHOW),
             )
             autoStartStateStore.setOverlayRequestedActive(true)
+            setOverlaySwitchChecked(true)
             feedbackText.setText(R.string.shortcuts_start_requested)
         } catch (_: RuntimeException) {
+            autoStartStateStore.setOverlayRequestedActive(false)
+            setOverlaySwitchChecked(false)
             feedbackText.setText(R.string.shortcuts_start_failed)
         }
     }
 
     private fun hideShortcuts(announce: Boolean = true) {
         autoStartStateStore.setOverlayRequestedActive(false)
+        setOverlaySwitchChecked(false)
         try {
             val stoppedService = startService(
                 Intent(this, OverlayService::class.java).setAction(OverlayService.ACTION_STOP),

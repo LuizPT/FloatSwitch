@@ -9,6 +9,7 @@
     <dimen name="status_padding">14dp</dimen>
     <dimen name="status_corner_radius">12dp</dimen>
     <dimen name="action_button_min_height">56dp</dimen>
+    <dimen name="compact_switch_min_touch_size">48dp</dimen>
     <dimen name="feedback_min_height">48dp</dimen>
     <dimen name="text_size_title">28sp</dimen>
     <dimen name="text_size_label">18sp</dimen>
