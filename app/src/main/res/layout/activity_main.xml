@@ -40,15 +40,28 @@
                     android:textSize="@dimen/text_size_title"
                     android:textStyle="bold" />
 
-                <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/overlaySwitch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:contentDescription="@string/overlay_switch_content_description"
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/overlayToggleButton"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="@dimen/overlay_toggle_width"
+                    android:layout_height="@dimen/overlay_toggle_min_touch_size"
+                    android:checkable="true"
+                    android:contentDescription="@string/overlay_toggle_description_off"
                     android:enabled="false"
-                    android:minWidth="@dimen/compact_switch_min_touch_size"
-                    android:minHeight="@dimen/compact_switch_min_touch_size"
-                    android:showText="false" />
+                    android:insetBottom="0dp"
+                    android:insetTop="0dp"
+                    android:minWidth="@dimen/overlay_toggle_width"
+                    android:minHeight="@dimen/overlay_toggle_min_touch_size"
+                    android:paddingHorizontal="@dimen/overlay_toggle_horizontal_padding"
+                    android:text="@string/overlay_toggle_off"
+                    android:textAllCaps="false"
+                    android:textColor="@color/overlay_toggle_text_tint"
+                    android:textSize="@dimen/overlay_toggle_text_size"
+                    android:textStyle="bold"
+                    app:backgroundTint="@color/overlay_toggle_background_tint"
+                    app:cornerRadius="@dimen/overlay_toggle_corner_radius"
+                    app:strokeColor="@color/overlay_toggle_stroke_tint"
+                    app:strokeWidth="@dimen/overlay_toggle_stroke_width" />
             </LinearLayout>
 
             <TextView

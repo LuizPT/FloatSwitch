@@ -9,11 +9,16 @@
     <dimen name="status_padding">14dp</dimen>
     <dimen name="status_corner_radius">12dp</dimen>
     <dimen name="action_button_min_height">56dp</dimen>
-    <dimen name="compact_switch_min_touch_size">48dp</dimen>
+    <dimen name="overlay_toggle_width">96dp</dimen>
+    <dimen name="overlay_toggle_min_touch_size">48dp</dimen>
+    <dimen name="overlay_toggle_horizontal_padding">12dp</dimen>
+    <dimen name="overlay_toggle_corner_radius">24dp</dimen>
+    <dimen name="overlay_toggle_stroke_width">1dp</dimen>
     <dimen name="feedback_min_height">48dp</dimen>
     <dimen name="text_size_title">28sp</dimen>
     <dimen name="text_size_label">18sp</dimen>
     <dimen name="text_size_body">16sp</dimen>
+    <dimen name="overlay_toggle_text_size">13sp</dimen>
     <dimen name="app_slot_corner_radius">16dp</dimen>
     <dimen name="application_position_size">40dp</dimen>
     <dimen name="app_row_padding">8dp</dimen>

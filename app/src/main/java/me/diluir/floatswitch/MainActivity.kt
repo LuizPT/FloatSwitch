@@ -23,6 +23,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.google.android.material.button.MaterialButton
 import java.text.DateFormat
 import java.util.Date
 
@@ -31,7 +32,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var feedbackText: TextView
     private lateinit var autoStartDiagnosticText: TextView
     private lateinit var autoStartSwitch: SwitchCompat
-    private lateinit var overlaySwitch: SwitchCompat
+    private lateinit var overlayToggleButton: MaterialButton
     private lateinit var addApplicationButton: Button
     private lateinit var applicationCountText: TextView
     private lateinit var applicationsContainer: LinearLayout
@@ -41,7 +42,7 @@ class MainActivity : AppCompatActivity() {
 
     private var installedApps: List<InstalledLauncherApp> = emptyList()
     private var updatingAutoStartSwitch = false
-    private var updatingOverlaySwitch = false
+    private var updatingOverlayToggle = false
 
     private val overlayPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -56,7 +57,7 @@ class MainActivity : AppCompatActivity() {
         if (granted) showShortcuts()
         else {
             autoStartStateStore.setOverlayRequestedActive(false)
-            setOverlaySwitchChecked(false)
+            setOverlayToggleChecked(false)
             feedbackText.setText(R.string.notification_permission_denied)
         }
     }
@@ -118,7 +119,7 @@ class MainActivity : AppCompatActivity() {
         feedbackText = findViewById(R.id.feedbackText)
         autoStartDiagnosticText = findViewById(R.id.autoStartDiagnostic)
         autoStartSwitch = findViewById(R.id.autoStartSwitch)
-        overlaySwitch = findViewById(R.id.overlaySwitch)
+        overlayToggleButton = findViewById(R.id.overlayToggleButton)
         addApplicationButton = findViewById(R.id.addApplicationButton)
         applicationCountText = findViewById(R.id.applicationCountText)
         applicationsContainer = findViewById(R.id.selectedApplicationsContainer)
@@ -135,8 +136,8 @@ class MainActivity : AppCompatActivity() {
         addApplicationButton.setOnClickListener {
             openApplicationPicker(AppPickerActivity.APPEND_INDEX)
         }
-        overlaySwitch.setOnCheckedChangeListener { _, enabled ->
-            if (!updatingOverlaySwitch) {
+        overlayToggleButton.addOnCheckedChangeListener { _, enabled ->
+            if (!updatingOverlayToggle) {
                 if (enabled) showShortcuts() else hideShortcuts()
             }
         }
@@ -154,7 +155,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus && ::overlaySwitch.isInitialized) synchronizeOverlaySwitch()
+        if (hasFocus && ::overlayToggleButton.isInitialized) synchronizeOverlayToggle()
     }
 
     private fun openApplicationPicker(selectionIndex: Int) {
@@ -183,7 +184,7 @@ class MainActivity : AppCompatActivity() {
         if (installedApps.isEmpty() && autoStartStateStore.isOverlayRequestedActive()) {
             hideShortcuts(announce = false)
         }
-        synchronizeOverlaySwitch()
+        synchronizeOverlayToggle()
     }
 
     private fun renderApplications() {
@@ -363,34 +364,41 @@ class MainActivity : AppCompatActivity() {
         updatingAutoStartSwitch = false
     }
 
-    private fun synchronizeOverlaySwitch() {
+    private fun synchronizeOverlayToggle() {
         val canShowOverlay = installedApps.isNotEmpty() && Settings.canDrawOverlays(this)
         if (!canShowOverlay && autoStartStateStore.isOverlayRequestedActive()) {
             hideShortcuts(announce = false)
         }
-        overlaySwitch.isEnabled = canShowOverlay
-        setOverlaySwitchChecked(
+        overlayToggleButton.isEnabled = canShowOverlay
+        setOverlayToggleChecked(
             canShowOverlay && autoStartStateStore.isOverlayRequestedActive(),
         )
     }
 
-    private fun setOverlaySwitchChecked(checked: Boolean) {
-        updatingOverlaySwitch = true
-        overlaySwitch.isChecked = checked
-        updatingOverlaySwitch = false
+    private fun setOverlayToggleChecked(checked: Boolean) {
+        updatingOverlayToggle = true
+        overlayToggleButton.isChecked = checked
+        overlayToggleButton.setText(
+            if (checked) R.string.overlay_toggle_on else R.string.overlay_toggle_off,
+        )
+        overlayToggleButton.contentDescription = getString(
+            if (checked) R.string.overlay_toggle_description_on
+            else R.string.overlay_toggle_description_off,
+        )
+        updatingOverlayToggle = false
     }
 
     private fun showShortcuts() {
         refreshSelectedApplications()
         if (installedApps.isEmpty()) {
             autoStartStateStore.setOverlayRequestedActive(false)
-            setOverlaySwitchChecked(false)
+            setOverlayToggleChecked(false)
             feedbackText.setText(R.string.at_least_one_application_required)
             return
         }
         if (!Settings.canDrawOverlays(this)) {
             autoStartStateStore.setOverlayRequestedActive(false)
-            setOverlaySwitchChecked(false)
+            setOverlayToggleChecked(false)
             updateOverlayPermissionState()
             feedbackText.setText(R.string.overlay_permission_required)
             return
@@ -402,7 +410,7 @@ class MainActivity : AppCompatActivity() {
                 Manifest.permission.POST_NOTIFICATIONS,
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            setOverlaySwitchChecked(false)
+            setOverlayToggleChecked(false)
             feedbackText.setText(R.string.notification_permission_explanation)
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             return
@@ -413,18 +421,18 @@ class MainActivity : AppCompatActivity() {
                 Intent(this, OverlayService::class.java).setAction(OverlayService.ACTION_SHOW),
             )
             autoStartStateStore.setOverlayRequestedActive(true)
-            setOverlaySwitchChecked(true)
+            setOverlayToggleChecked(true)
             feedbackText.setText(R.string.shortcuts_start_requested)
         } catch (_: RuntimeException) {
             autoStartStateStore.setOverlayRequestedActive(false)
-            setOverlaySwitchChecked(false)
+            setOverlayToggleChecked(false)
             feedbackText.setText(R.string.shortcuts_start_failed)
         }
     }
 
     private fun hideShortcuts(announce: Boolean = true) {
         autoStartStateStore.setOverlayRequestedActive(false)
-        setOverlaySwitchChecked(false)
+        setOverlayToggleChecked(false)
         try {
             val stoppedService = startService(
                 Intent(this, OverlayService::class.java).setAction(OverlayService.ACTION_STOP),

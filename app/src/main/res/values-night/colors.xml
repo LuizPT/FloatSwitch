@@ -11,4 +11,13 @@
     <color name="app_list_divider">#FF3F444C</color>
     <color name="overlay_button_background">#FF253348</color>
     <color name="overlay_button_pressed">#FF354B68</color>
+    <color name="overlay_toggle_background_checked">#FF2E7D43</color>
+    <color name="overlay_toggle_background_unchecked">#FF59616B</color>
+    <color name="overlay_toggle_background_disabled">#FF343941</color>
+    <color name="overlay_toggle_stroke_checked">#FF70D889</color>
+    <color name="overlay_toggle_stroke_unchecked">#FF9AA2AC</color>
+    <color name="overlay_toggle_stroke_disabled">#FF5F6670</color>
+    <color name="overlay_toggle_text_checked">#FFFFFFFF</color>
+    <color name="overlay_toggle_text_unchecked">#FFFFFFFF</color>
+    <color name="overlay_toggle_text_disabled">#FFE1E4E8</color>
 </resources>

@@ -1,7 +1,10 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">FloatSwitch</string>
     <string name="screen_title">Atalhos flutuantes</string>
-    <string name="overlay_switch_content_description">Activar ou ocultar os atalhos flutuantes</string>
+    <string name="overlay_toggle_on">ON</string>
+    <string name="overlay_toggle_off">OFF</string>
+    <string name="overlay_toggle_description_on">Atalhos flutuantes ligados</string>
+    <string name="overlay_toggle_description_off">Atalhos flutuantes desligados</string>
     <string name="screen_description">Escolha entre uma e seis aplicações e ordene os atalhos flutuantes.</string>
     <string name="overlay_move_guidance">Mantenha premido um atalho para mover o conjunto.</string>
     <string name="button_change_application">Alterar</string>
