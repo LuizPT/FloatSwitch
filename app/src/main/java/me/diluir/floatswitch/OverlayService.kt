@@ -42,11 +42,13 @@ class OverlayService : Service() {
     private lateinit var selectedAppsStore: SelectedAppsStore
     private lateinit var launcherAppsRepository: LauncherAppsRepository
     private lateinit var overlayPositionStore: OverlayPositionStore
+    private lateinit var positionLockStore: PositionLockStore
     private lateinit var autoStartStateStore: AutoStartStateStore
     private var overlayView: View? = null
     private var overlayButtons: List<ImageButton> = emptyList()
     private var displayedSelections: List<SelectedApp> = emptyList()
     private var currentPosition = OverlayPositionRules.defaultPosition
+    private var positionLocked = false
     private var activePointerId = MotionEvent.INVALID_POINTER_ID
     private var gestureView: View? = null
     private var downRawX = 0f
@@ -54,10 +56,14 @@ class OverlayService : Service() {
     private var dragStartX = 0
     private var dragStartY = 0
     private var touchMovedBeyondSlop = false
+    private var longPressDetected = false
     private var dragStarted = false
     private val gestureHandler = Handler(Looper.getMainLooper())
     private val touchSlop by lazy { ViewConfiguration.get(this).scaledTouchSlop }
-    private val longPressAction = Runnable { startDragging() }
+    private val longPressAction = Runnable {
+        longPressDetected = true
+        startDragging()
+    }
     private val stateCheckHandler = Handler(Looper.getMainLooper())
     private val stateCheck = object : Runnable {
         override fun run() {
@@ -116,7 +122,9 @@ class OverlayService : Service() {
         selectedAppsStore = SelectedAppsStore(this)
         launcherAppsRepository = LauncherAppsRepository(packageManager, packageName)
         overlayPositionStore = OverlayPositionStore(this)
+        positionLockStore = PositionLockStore(this)
         currentPosition = overlayPositionStore.load()
+        positionLocked = positionLockStore.isPositionLocked()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -140,6 +148,8 @@ class OverlayService : Service() {
             stopForInvalidState(AutoStartResult.OVERLAY_PERMISSION_MISSING)
             return START_NOT_STICKY
         }
+
+        updatePositionLockState()
 
         val applications = try {
             loadSelectedApplications()
@@ -363,7 +373,8 @@ class OverlayService : Service() {
             button.imageTintList = null
             button.setImageDrawable(installedApp.icon)
             button.contentDescription = getString(
-                R.string.overlay_button_open_application,
+                if (positionLocked) R.string.overlay_button_open_application_locked
+                else R.string.overlay_button_open_application,
                 installedApp.selection.displayName,
             )
             button.setOnClickListener {
@@ -463,7 +474,11 @@ class OverlayService : Service() {
             finishDragging()
             false
         } else {
-            val shouldClick = !touchMovedBeyondSlop
+            val shouldClick = OverlayGestureRules.shouldPerformClick(
+                dragStarted = dragStarted,
+                movedBeyondSlop = touchMovedBeyondSlop,
+                longPressDetected = longPressDetected,
+            )
             resetGestureState()
             shouldClick
         }
@@ -480,7 +495,15 @@ class OverlayService : Service() {
     private fun startDragging() {
         val container = overlayView ?: return
         val params = container.layoutParams as? WindowManager.LayoutParams ?: return
-        if (activePointerId == MotionEvent.INVALID_POINTER_ID || touchMovedBeyondSlop) return
+        if (
+            !OverlayGestureRules.shouldStartDrag(
+                positionLocked = positionLocked,
+                movedBeyondSlop = touchMovedBeyondSlop,
+                hasActivePointer = activePointerId != MotionEvent.INVALID_POINTER_ID,
+            )
+        ) {
+            return
+        }
 
         dragStarted = true
         dragStartX = params.x
@@ -528,7 +551,16 @@ class OverlayService : Service() {
         activePointerId = MotionEvent.INVALID_POINTER_ID
         gestureView = null
         touchMovedBeyondSlop = false
+        longPressDetected = false
         dragStarted = false
+    }
+
+    private fun updatePositionLockState() {
+        val storedPositionLocked = positionLockStore.isPositionLocked()
+        if (storedPositionLocked == positionLocked) return
+
+        resetGestureState()
+        positionLocked = storedPositionLocked
     }
 
     private fun restoreOverlayPosition() {

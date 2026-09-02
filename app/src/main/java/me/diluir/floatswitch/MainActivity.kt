@@ -5,11 +5,11 @@ import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.content.res.ColorStateList
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.LayoutInflater
+import android.view.View
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -28,10 +28,11 @@ import java.text.DateFormat
 import java.util.Date
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var permissionStateText: TextView
+    private lateinit var overlayPermissionBlock: View
     private lateinit var feedbackText: TextView
     private lateinit var autoStartDiagnosticText: TextView
     private lateinit var autoStartSwitch: SwitchCompat
+    private lateinit var positionLockSwitch: SwitchCompat
     private lateinit var overlayToggleButton: MaterialButton
     private lateinit var addApplicationButton: Button
     private lateinit var applicationCountText: TextView
@@ -39,9 +40,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var selectedAppsStore: SelectedAppsStore
     private lateinit var launcherAppsRepository: LauncherAppsRepository
     private lateinit var autoStartStateStore: AutoStartStateStore
+    private lateinit var positionLockStore: PositionLockStore
 
     private var installedApps: List<InstalledLauncherApp> = emptyList()
     private var updatingAutoStartSwitch = false
+    private var updatingPositionLockSwitch = false
     private var updatingOverlayToggle = false
 
     private val overlayPermissionLauncher = registerForActivityResult(
@@ -115,10 +118,12 @@ class MainActivity : AppCompatActivity() {
         selectedAppsStore = SelectedAppsStore(this)
         launcherAppsRepository = LauncherAppsRepository(packageManager, packageName)
         autoStartStateStore = AutoStartStateStore(this)
-        permissionStateText = findViewById(R.id.overlayPermissionState)
+        positionLockStore = PositionLockStore(this)
+        overlayPermissionBlock = findViewById(R.id.overlayPermissionBlock)
         feedbackText = findViewById(R.id.feedbackText)
         autoStartDiagnosticText = findViewById(R.id.autoStartDiagnostic)
         autoStartSwitch = findViewById(R.id.autoStartSwitch)
+        positionLockSwitch = findViewById(R.id.positionLockSwitch)
         overlayToggleButton = findViewById(R.id.overlayToggleButton)
         addApplicationButton = findViewById(R.id.addApplicationButton)
         applicationCountText = findViewById(R.id.applicationCountText)
@@ -144,6 +149,9 @@ class MainActivity : AppCompatActivity() {
         autoStartSwitch.setOnCheckedChangeListener { _, enabled ->
             if (!updatingAutoStartSwitch) changeAutoStartPreference(enabled)
         }
+        positionLockSwitch.setOnCheckedChangeListener { _, locked ->
+            if (!updatingPositionLockSwitch) changePositionLockPreference(locked)
+        }
     }
 
     override fun onResume() {
@@ -151,6 +159,7 @@ class MainActivity : AppCompatActivity() {
         updateOverlayPermissionState()
         refreshSelectedApplications()
         updateAutoStartInformation()
+        updatePositionLockInformation()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -268,7 +277,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshOverlayIfActive() {
-        if (!autoStartStateStore.isOverlayRequestedActive() || installedApps.isEmpty()) return
+        if (
+            !autoStartStateStore.isOverlayRequestedActive() ||
+            installedApps.isEmpty() ||
+            !Settings.canDrawOverlays(this)
+        ) {
+            return
+        }
         try {
             ContextCompat.startForegroundService(
                 this,
@@ -292,25 +307,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateOverlayPermissionState() {
-        val permissionGranted = Settings.canDrawOverlays(this)
-        val backgroundColor = if (permissionGranted) {
-            R.color.status_granted_background
+        overlayPermissionBlock.visibility = if (Settings.canDrawOverlays(this)) {
+            View.GONE
         } else {
-            R.color.status_missing_background
+            View.VISIBLE
         }
-        val textColor = if (permissionGranted) {
-            R.color.status_granted_text
-        } else {
-            R.color.status_missing_text
-        }
-        permissionStateText.setText(
-            if (permissionGranted) R.string.overlay_permission_granted
-            else R.string.overlay_permission_missing,
-        )
-        permissionStateText.backgroundTintList = ColorStateList.valueOf(
-            ContextCompat.getColor(this, backgroundColor),
-        )
-        permissionStateText.setTextColor(ContextCompat.getColor(this, textColor))
     }
 
     private fun changeAutoStartPreference(enabled: Boolean) {
@@ -362,6 +363,27 @@ class MainActivity : AppCompatActivity() {
         updatingAutoStartSwitch = true
         autoStartSwitch.isChecked = checked
         updatingAutoStartSwitch = false
+    }
+
+    private fun changePositionLockPreference(locked: Boolean) {
+        positionLockStore.setPositionLocked(locked)
+        updatePositionLockContentDescription(locked)
+        refreshOverlayIfActive()
+    }
+
+    private fun updatePositionLockInformation() {
+        val locked = positionLockStore.isPositionLocked()
+        updatingPositionLockSwitch = true
+        positionLockSwitch.isChecked = locked
+        updatingPositionLockSwitch = false
+        updatePositionLockContentDescription(locked)
+    }
+
+    private fun updatePositionLockContentDescription(locked: Boolean) {
+        positionLockSwitch.contentDescription = getString(
+            if (locked) R.string.position_lock_description_on
+            else R.string.position_lock_description_off,
+        )
     }
 
     private fun synchronizeOverlayToggle() {

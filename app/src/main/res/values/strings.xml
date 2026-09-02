@@ -31,9 +31,7 @@
     <string name="app_picker_title">Escolher aplicação</string>
     <string name="app_picker_search_hint">Pesquisar por nome</string>
     <string name="app_picker_empty">Nenhuma aplicação encontrada.</string>
-    <string name="overlay_permission_label">Mostrar sobre outras aplicações</string>
-    <string name="overlay_permission_granted">Autorização concedida</string>
-    <string name="overlay_permission_missing">Autorização em falta</string>
+    <string name="overlay_permission_missing">É necessária autorização para apresentar os atalhos sobre outras aplicações.</string>
     <string name="button_grant_overlay_permission">Conceder autorização</string>
     <string name="auto_start_title">Iniciar automaticamente com o dispositivo</string>
     <string name="auto_start_description">Mostra os atalhos automaticamente depois de o Android arrancar.</string>
@@ -41,6 +39,9 @@
     <string name="auto_start_disabled_feedback">O arranque automático foi desactivado. Os atalhos actuais mantêm-se visíveis.</string>
     <string name="auto_start_requires_overlay">Conceda a autorização “Mostrar sobre outras aplicações” antes de activar o arranque automático.</string>
     <string name="auto_start_requires_apps">Escolha pelo menos uma aplicação válida antes de activar o arranque automático.</string>
+    <string name="position_lock_title">Bloquear posição</string>
+    <string name="position_lock_description_on">Posição dos atalhos bloqueada</string>
+    <string name="position_lock_description_off">Posição dos atalhos desbloqueada</string>
     <string name="auto_start_diagnostic_never">Último arranque automático: nunca</string>
     <string name="auto_start_diagnostic_format">Último arranque automático: %1$s · %2$s · %3$s</string>
     <string name="auto_start_event_boot">arranque do dispositivo</string>
@@ -72,6 +73,7 @@
     <string name="notification_text">Atalhos flutuantes activos</string>
     <string name="notification_action_hide">Ocultar</string>
     <string name="overlay_button_open_application">%1$s. Toque para abrir. Mantenha premido para mover o conjunto.</string>
+    <string name="overlay_button_open_application_locked">%1$s. Toque para abrir. A posição do conjunto está bloqueada.</string>
     <string name="application_launch_failed">Não foi possível abrir %1$s.</string>
     <string name="overlay_accessibility_title">Atalhos flutuantes do FloatSwitch</string>
     <string name="foreground_service_special_use_subtype" translatable="false">Persistent user-controlled floating application shortcuts</string>

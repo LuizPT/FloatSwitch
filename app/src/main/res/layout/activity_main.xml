@@ -114,35 +114,33 @@
                 android:text="@string/button_add_application"
                 android:textAllCaps="false" />
 
-            <TextView
+            <LinearLayout
+                android:id="@+id/overlayPermissionBlock"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_large"
-                android:text="@string/overlay_permission_label"
-                android:textColor="@color/screen_text_primary"
-                android:textSize="@dimen/text_size_label"
-                android:textStyle="bold" />
+                android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/overlayPermissionState"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/spacing_small"
-                android:background="@drawable/status_background"
-                android:padding="@dimen/status_padding"
-                android:text="@string/overlay_permission_missing"
-                android:textColor="@color/status_missing_text"
-                android:textSize="@dimen/text_size_body"
-                android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/overlayPermissionState"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/status_background"
+                    android:padding="@dimen/status_padding"
+                    android:text="@string/overlay_permission_missing"
+                    android:textColor="@color/status_missing_text"
+                    android:textSize="@dimen/text_size_body"
+                    android:textStyle="bold" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/grantOverlayPermissionButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/spacing_medium"
-                android:minHeight="@dimen/action_button_min_height"
-                android:text="@string/button_grant_overlay_permission"
-                android:textAllCaps="false" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/grantOverlayPermissionButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_small"
+                    android:minHeight="@dimen/app_slot_button_min_height"
+                    android:text="@string/button_grant_overlay_permission"
+                    android:textAllCaps="false" />
+            </LinearLayout>
 
             <androidx.appcompat.widget.SwitchCompat
                 android:id="@+id/autoStartSwitch"
@@ -151,6 +149,16 @@
                 android:layout_marginTop="@dimen/spacing_large"
                 android:minHeight="@dimen/action_button_min_height"
                 android:text="@string/auto_start_title"
+                android:textColor="@color/screen_text_primary"
+                android:textSize="@dimen/text_size_body" />
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/positionLockSwitch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/position_lock_description_off"
+                android:minHeight="@dimen/action_button_min_height"
+                android:text="@string/position_lock_title"
                 android:textColor="@color/screen_text_primary"
                 android:textSize="@dimen/text_size_body" />
 

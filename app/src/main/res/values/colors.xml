@@ -3,8 +3,6 @@
     <color name="screen_background">#FFF7F9FC</color>
     <color name="screen_text_primary">#FF1A1C1E</color>
     <color name="screen_text_secondary">#FF44474E</color>
-    <color name="status_granted_background">#FFD8F3DC</color>
-    <color name="status_granted_text">#FF0B5D1E</color>
     <color name="status_missing_background">#FFFDE2E1</color>
     <color name="status_missing_text">#FF8C1D18</color>
     <color name="app_slot_background">#FFFFFFFF</color>
