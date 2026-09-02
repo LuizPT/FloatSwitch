@@ -83,21 +83,15 @@ class BootReceiver : BroadcastReceiver() {
             context.packageManager,
             context.packageName,
         )
-        val firstSelection = selectedAppsStore.load(AppSlot.FIRST)
-        val secondSelection = selectedAppsStore.load(AppSlot.SECOND)
-        val selections = listOfNotNull(firstSelection, secondSelection)
-        val activityValidity = launcherAppsRepository.validateLauncherActivities(selections)
-        val firstValid = firstSelection != null && activityValidity.firstOrNull() == true
-        val secondIndex = if (firstSelection == null) 0 else 1
-        val secondValid = secondSelection != null &&
-            activityValidity.getOrElse(secondIndex) { false } &&
-            firstSelection?.packageName != secondSelection?.packageName
+        val selections = selectedAppsStore.load()
+        val installedApps = launcherAppsRepository.resolveInstalledApps(selections).filterNotNull()
+        val validSelections = installedApps.map(InstalledLauncherApp::selection)
+        if (validSelections != selections) selectedAppsStore.save(validSelections)
         return AutoStartDecisionEngine.decide(
             action = action,
             autoStartEnabled = autoStartEnabled,
             overlayPermissionGranted = true,
-            firstApplicationValid = firstValid,
-            secondApplicationValid = secondValid,
+            validApplicationCount = validSelections.size,
         )
     }
 }

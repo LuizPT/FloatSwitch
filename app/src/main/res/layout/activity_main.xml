@@ -49,115 +49,39 @@
                 android:textColor="@color/screen_text_secondary"
                 android:textSize="@dimen/text_size_body" />
 
-            <LinearLayout
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_large"
-                android:background="@drawable/app_selection_background"
-                android:orientation="vertical"
-                android:padding="@dimen/app_slot_padding">
+                android:text="@string/applications_heading"
+                android:textColor="@color/screen_text_primary"
+                android:textSize="@dimen/text_size_label"
+                android:textStyle="bold" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/application_one_label"
-                    android:textColor="@color/screen_text_primary"
-                    android:textSize="@dimen/text_size_label"
-                    android:textStyle="bold" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/spacing_small"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <ImageView
-                        android:id="@+id/applicationOneIcon"
-                        android:layout_width="@dimen/app_slot_icon_size"
-                        android:layout_height="@dimen/app_slot_icon_size"
-                        android:contentDescription="@string/no_application_icon_description"
-                        android:scaleType="fitCenter"
-                        android:src="@drawable/ic_app_placeholder"
-                        app:tint="@color/overlay_icon" />
-
-                    <TextView
-                        android:id="@+id/applicationOneName"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginHorizontal="@dimen/spacing_medium"
-                        android:layout_weight="1"
-                        android:ellipsize="end"
-                        android:maxLines="2"
-                        android:text="@string/no_application_selected"
-                        android:textColor="@color/screen_text_secondary"
-                        android:textSize="@dimen/text_size_body" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/chooseApplicationOneButton"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:minHeight="@dimen/app_slot_button_min_height"
-                        android:text="@string/button_choose_application"
-                        android:textAllCaps="false" />
-                </LinearLayout>
-            </LinearLayout>
-
-            <LinearLayout
+            <TextView
+                android:id="@+id/applicationCountText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_small"
-                android:background="@drawable/app_selection_background"
-                android:orientation="vertical"
-                android:padding="@dimen/app_slot_padding">
+                android:text="@string/application_count_initial"
+                android:textColor="@color/screen_text_secondary"
+                android:textSize="@dimen/text_size_body" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/application_two_label"
-                    android:textColor="@color/screen_text_primary"
-                    android:textSize="@dimen/text_size_label"
-                    android:textStyle="bold" />
+            <LinearLayout
+                android:id="@+id/selectedApplicationsContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/spacing_small"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <ImageView
-                        android:id="@+id/applicationTwoIcon"
-                        android:layout_width="@dimen/app_slot_icon_size"
-                        android:layout_height="@dimen/app_slot_icon_size"
-                        android:contentDescription="@string/no_application_icon_description"
-                        android:scaleType="fitCenter"
-                        android:src="@drawable/ic_app_placeholder"
-                        app:tint="@color/overlay_icon" />
-
-                    <TextView
-                        android:id="@+id/applicationTwoName"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginHorizontal="@dimen/spacing_medium"
-                        android:layout_weight="1"
-                        android:ellipsize="end"
-                        android:maxLines="2"
-                        android:text="@string/no_application_selected"
-                        android:textColor="@color/screen_text_secondary"
-                        android:textSize="@dimen/text_size_body" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/chooseApplicationTwoButton"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:minHeight="@dimen/app_slot_button_min_height"
-                        android:text="@string/button_choose_application"
-                        android:textAllCaps="false" />
-                </LinearLayout>
-            </LinearLayout>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/addApplicationButton"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_small"
+                android:minHeight="@dimen/action_button_min_height"
+                android:text="@string/button_add_application"
+                android:textAllCaps="false" />
 
             <TextView
                 android:layout_width="match_parent"

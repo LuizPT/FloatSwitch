@@ -57,7 +57,87 @@ object SelectedAppCodec {
     )
 }
 
-object AppSelectionRules {
-    fun canUseInSlot(candidate: SelectedApp, otherSelection: SelectedApp?): Boolean =
-        otherSelection == null || candidate.packageName != otherSelection.packageName
+object SelectedAppsRules {
+    const val MAX_APPLICATIONS = 6
+
+    fun sanitize(applications: List<SelectedApp>): List<SelectedApp> = applications
+        .filter(::isValid)
+        .distinctBy(SelectedApp::packageName)
+        .take(MAX_APPLICATIONS)
+
+    fun add(
+        applications: List<SelectedApp>,
+        candidate: SelectedApp,
+    ): List<SelectedApp> {
+        val current = sanitize(applications)
+        if (
+            current.size >= MAX_APPLICATIONS ||
+            current.any { it.packageName == candidate.packageName } ||
+            !isValid(candidate)
+        ) {
+            return current
+        }
+        return current + candidate
+    }
+
+    fun replace(
+        applications: List<SelectedApp>,
+        index: Int,
+        candidate: SelectedApp,
+    ): List<SelectedApp> {
+        val current = sanitize(applications)
+        if (
+            index !in current.indices ||
+            !isValid(candidate) ||
+            current.withIndex().any { (otherIndex, app) ->
+                otherIndex != index && app.packageName == candidate.packageName
+            }
+        ) {
+            return current
+        }
+        return current.toMutableList().apply { this[index] = candidate }
+    }
+
+    fun removeAt(applications: List<SelectedApp>, index: Int): List<SelectedApp> {
+        val current = sanitize(applications)
+        if (index !in current.indices) return current
+        return current.toMutableList().apply { removeAt(index) }
+    }
+
+    fun move(applications: List<SelectedApp>, fromIndex: Int, toIndex: Int): List<SelectedApp> {
+        val current = sanitize(applications)
+        if (fromIndex !in current.indices || toIndex !in current.indices || fromIndex == toIndex) {
+            return current
+        }
+        return current.toMutableList().apply {
+            add(toIndex, removeAt(fromIndex))
+        }
+    }
+
+    fun availableApplications(
+        applications: List<SelectedApp>,
+        availability: List<Boolean>,
+    ): List<SelectedApp> = sanitize(
+        applications.filterIndexed { index, _ -> availability.getOrElse(index) { false } },
+    )
+
+    private fun isValid(application: SelectedApp): Boolean =
+        application.displayName.isNotBlank() &&
+            application.packageName.isNotBlank() &&
+            application.activityName.isNotBlank()
+}
+
+object SelectedAppsMigration {
+    fun fromLegacyValues(encodedValues: List<String?>): List<SelectedApp> =
+        SelectedAppsRules.sanitize(encodedValues.mapNotNull(SelectedAppCodec::decode))
+
+    fun resolve(
+        newSchemaExists: Boolean,
+        newEncodedValues: List<String?>,
+        legacyEncodedValues: List<String?>,
+    ): List<SelectedApp> = if (newSchemaExists) {
+        SelectedAppsRules.sanitize(newEncodedValues.mapNotNull(SelectedAppCodec::decode))
+    } else {
+        fromLegacyValues(legacyEncodedValues)
+    }
 }

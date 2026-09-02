@@ -17,6 +17,8 @@ enum class AutoStartResult {
     START_REQUESTED,
     AUTO_START_DISABLED,
     OVERLAY_PERMISSION_MISSING,
+    NO_VALID_APPLICATIONS,
+    TOO_MANY_APPLICATIONS,
     FIRST_APP_INVALID,
     SECOND_APP_INVALID,
     UNKNOWN_ACTION,
@@ -38,16 +40,17 @@ object AutoStartDecisionEngine {
         action: String?,
         autoStartEnabled: Boolean,
         overlayPermissionGranted: Boolean,
-        firstApplicationValid: Boolean,
-        secondApplicationValid: Boolean,
+        validApplicationCount: Int,
     ): AutoStartDecision {
         val event = AutoStartEvent.fromIntentAction(action)
         val result = when {
             event == AutoStartEvent.UNKNOWN -> AutoStartResult.UNKNOWN_ACTION
             !autoStartEnabled -> AutoStartResult.AUTO_START_DISABLED
             !overlayPermissionGranted -> AutoStartResult.OVERLAY_PERMISSION_MISSING
-            !firstApplicationValid -> AutoStartResult.FIRST_APP_INVALID
-            !secondApplicationValid -> AutoStartResult.SECOND_APP_INVALID
+            validApplicationCount <= 0 -> AutoStartResult.NO_VALID_APPLICATIONS
+            validApplicationCount > SelectedAppsRules.MAX_APPLICATIONS -> {
+                AutoStartResult.TOO_MANY_APPLICATIONS
+            }
             else -> AutoStartResult.START_REQUESTED
         }
         return AutoStartDecision(event, result)
@@ -82,6 +85,8 @@ object AutoStartDiagnosticRules {
         -> result != AutoStartResult.UNKNOWN_ACTION
 
         AutoStartEvent.SERVICE_RECOVERY -> result == AutoStartResult.OVERLAY_PERMISSION_MISSING ||
+            result == AutoStartResult.NO_VALID_APPLICATIONS ||
+            result == AutoStartResult.TOO_MANY_APPLICATIONS ||
             result == AutoStartResult.FIRST_APP_INVALID ||
             result == AutoStartResult.SECOND_APP_INVALID ||
             result == AutoStartResult.SECURITY_EXCEPTION ||

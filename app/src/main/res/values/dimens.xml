@@ -3,6 +3,7 @@
     <dimen name="screen_content_max_width">720dp</dimen>
     <dimen name="screen_content_padding">24dp</dimen>
     <dimen name="spacing_small">8dp</dimen>
+    <dimen name="spacing_extra_small">4dp</dimen>
     <dimen name="spacing_medium">16dp</dimen>
     <dimen name="spacing_large">24dp</dimen>
     <dimen name="status_padding">14dp</dimen>
@@ -12,9 +13,15 @@
     <dimen name="text_size_title">28sp</dimen>
     <dimen name="text_size_label">18sp</dimen>
     <dimen name="text_size_body">16sp</dimen>
-    <dimen name="app_slot_padding">14dp</dimen>
     <dimen name="app_slot_corner_radius">16dp</dimen>
-    <dimen name="app_slot_icon_size">56dp</dimen>
+    <dimen name="application_position_size">40dp</dimen>
+    <dimen name="app_row_padding">8dp</dimen>
+    <dimen name="app_row_spacing">6dp</dimen>
+    <dimen name="app_row_narrow_icon_size">48dp</dimen>
+    <dimen name="app_row_wide_height">72dp</dimen>
+    <dimen name="app_row_wide_icon_size">40dp</dimen>
+    <dimen name="app_row_command_size">48dp</dimen>
+    <dimen name="app_row_command_icon_padding">12dp</dimen>
     <dimen name="app_slot_button_min_height">48dp</dimen>
     <dimen name="app_picker_row_min_height">72dp</dimen>
     <dimen name="app_picker_icon_size">48dp</dimen>

@@ -11,5 +11,4 @@
     <color name="app_list_divider">#FF3F444C</color>
     <color name="overlay_button_background">#FF253348</color>
     <color name="overlay_button_pressed">#FF354B68</color>
-    <color name="overlay_icon">#FFA8C7FA</color>
 </resources>

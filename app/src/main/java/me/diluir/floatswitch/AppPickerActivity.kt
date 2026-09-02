@@ -31,15 +31,17 @@ class AppPickerActivity : AppCompatActivity() {
             insets
         }
 
-        val slot = AppSlot.fromStorageKey(intent.getStringExtra(EXTRA_SLOT))
-        if (slot == null) {
+        val selectionIndex = intent.getIntExtra(EXTRA_SELECTION_INDEX, INVALID_INDEX)
+        if (selectionIndex !in APPEND_INDEX until SelectedAppsRules.MAX_APPLICATIONS) {
             finish()
             return
         }
 
         val repository = LauncherAppsRepository(packageManager, packageName)
         val applications = repository.loadInstalledApps(
-            excludedPackageName = intent.getStringExtra(EXTRA_EXCLUDED_PACKAGE),
+            excludedPackageNames = intent.getStringArrayListExtra(EXTRA_EXCLUDED_PACKAGES)
+                ?.toSet()
+                .orEmpty(),
         )
         val listView = findViewById<ListView>(R.id.applicationsList)
         val emptyView = findViewById<TextView>(R.id.emptyApplicationsText)
@@ -52,7 +54,7 @@ class AppPickerActivity : AppCompatActivity() {
             setResult(
                 Activity.RESULT_OK,
                 Intent().apply {
-                    putExtra(EXTRA_SLOT, slot.storageKey)
+                    putExtra(EXTRA_SELECTION_INDEX, selectionIndex)
                     putExtra(EXTRA_SELECTION, SelectedAppCodec.encode(selection))
                 },
             )
@@ -65,17 +67,22 @@ class AppPickerActivity : AppCompatActivity() {
     }
 
     companion object {
-        const val EXTRA_SLOT = "app_slot"
+        const val APPEND_INDEX = -1
         const val EXTRA_SELECTION = "selected_app"
-        const val EXTRA_EXCLUDED_PACKAGE = "excluded_package"
+        const val EXTRA_SELECTION_INDEX = "selected_app_index"
+        private const val EXTRA_EXCLUDED_PACKAGES = "excluded_packages"
+        private const val INVALID_INDEX = Int.MIN_VALUE
 
         fun createIntent(
             context: Context,
-            slot: AppSlot,
-            excludedPackageName: String?,
+            selectionIndex: Int,
+            excludedPackageNames: Collection<String>,
         ): Intent = Intent(context, AppPickerActivity::class.java).apply {
-            putExtra(EXTRA_SLOT, slot.storageKey)
-            putExtra(EXTRA_EXCLUDED_PACKAGE, excludedPackageName)
+            putExtra(EXTRA_SELECTION_INDEX, selectionIndex)
+            putStringArrayListExtra(
+                EXTRA_EXCLUDED_PACKAGES,
+                ArrayList(excludedPackageNames),
+            )
         }
     }
 }

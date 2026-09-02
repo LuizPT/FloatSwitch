@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="@dimen/app_row_spacing"
+    android:background="@drawable/app_selection_background"
+    android:orientation="vertical"
+    android:padding="@dimen/app_row_padding">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/applicationPosition"
+            android:layout_width="@dimen/application_position_size"
+            android:layout_height="@dimen/application_position_size"
+            android:gravity="center"
+            android:textColor="@color/screen_text_primary"
+            android:textSize="@dimen/text_size_label"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/selectedApplicationIcon"
+            android:layout_width="@dimen/app_row_narrow_icon_size"
+            android:layout_height="@dimen/app_row_narrow_icon_size"
+            android:layout_marginStart="@dimen/spacing_extra_small"
+            android:contentDescription="@string/application_icon_generic_description"
+            android:scaleType="fitCenter" />
+
+        <TextView
+            android:id="@+id/selectedApplicationName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/spacing_small"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textColor="@color/screen_text_primary"
+            android:textSize="@dimen/text_size_body" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_extra_small"
+        android:gravity="end"
+        android:orientation="horizontal">
+
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/moveApplicationUpButton"
+            android:layout_width="@dimen/app_row_command_size"
+            android:layout_height="@dimen/app_row_command_size"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/tooltip_move_application_up"
+            android:focusable="true"
+            android:padding="@dimen/app_row_command_icon_padding"
+            android:tooltipText="@string/tooltip_move_application_up"
+            app:srcCompat="@drawable/ic_move_up_24"
+            app:tint="@color/app_row_control_tint" />
+
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/moveApplicationDownButton"
+            android:layout_width="@dimen/app_row_command_size"
+            android:layout_height="@dimen/app_row_command_size"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/tooltip_move_application_down"
+            android:focusable="true"
+            android:padding="@dimen/app_row_command_icon_padding"
+            android:tooltipText="@string/tooltip_move_application_down"
+            app:srcCompat="@drawable/ic_move_down_24"
+            app:tint="@color/app_row_control_tint" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/changeApplicationButton"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="@dimen/app_row_command_size"
+            android:layout_marginHorizontal="@dimen/spacing_extra_small"
+            android:minHeight="@dimen/app_slot_button_min_height"
+            android:text="@string/button_change_application"
+            android:textAllCaps="false" />
+
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/removeApplicationButton"
+            android:layout_width="@dimen/app_row_command_size"
+            android:layout_height="@dimen/app_row_command_size"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/tooltip_remove_application"
+            android:focusable="true"
+            android:padding="@dimen/app_row_command_icon_padding"
+            android:tooltipText="@string/tooltip_remove_application"
+            app:srcCompat="@drawable/ic_delete_24"
+            app:tint="@color/app_row_remove_tint" />
+    </LinearLayout>
+
+</LinearLayout>

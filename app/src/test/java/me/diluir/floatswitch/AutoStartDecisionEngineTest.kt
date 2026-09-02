@@ -24,36 +24,59 @@ class AutoStartDecisionEngineTest {
     }
 
     @Test
-    fun invalidFirstApplication_isIgnored() {
-        val decision = decide(firstApplicationValid = false)
+    fun zeroValidApplications_isIgnored() {
+        val decision = decide(validApplicationCount = 0)
 
         assertFalse(decision.shouldStart)
-        assertEquals(AutoStartResult.FIRST_APP_INVALID, decision.result)
+        assertEquals(AutoStartResult.NO_VALID_APPLICATIONS, decision.result)
     }
 
     @Test
-    fun invalidSecondApplication_isIgnored() {
-        val decision = decide(secondApplicationValid = false)
-
-        assertFalse(decision.shouldStart)
-        assertEquals(AutoStartResult.SECOND_APP_INVALID, decision.result)
+    fun oneValidApplication_requestsStart() {
+        assertTrue(decide(validApplicationCount = 1).shouldStart)
     }
 
     @Test
-    fun completeConfiguration_requestsStart() {
-        val decision = decide()
+    fun sixValidApplications_requestStart() {
+        assertTrue(decide(validApplicationCount = 6).shouldStart)
+    }
 
-        assertTrue(decision.shouldStart)
-        assertEquals(AutoStartEvent.BOOT_COMPLETED, decision.event)
-        assertEquals(AutoStartResult.START_REQUESTED, decision.result)
+    @Test
+    fun moreThanSixApplications_isIgnored() {
+        val decision = decide(validApplicationCount = 7)
+
+        assertFalse(decision.shouldStart)
+        assertEquals(AutoStartResult.TOO_MANY_APPLICATIONS, decision.result)
+    }
+
+    @Test
+    fun oneUnavailableAndOneValidApplication_requestsStart() {
+        val configured = listOf(application(1), application(2))
+        val available = SelectedAppsRules.availableApplications(
+            configured,
+            listOf(false, true),
+        )
+
+        assertTrue(decide(validApplicationCount = available.size).shouldStart)
+    }
+
+    @Test
+    fun allUnavailableApplications_areIgnored() {
+        val configured = listOf(application(1), application(2))
+        val available = SelectedAppsRules.availableApplications(
+            configured,
+            listOf(false, false),
+        )
+
+        assertEquals(
+            AutoStartResult.NO_VALID_APPLICATIONS,
+            decide(validApplicationCount = available.size).result,
+        )
     }
 
     @Test
     fun unknownAction_isIgnoredBeforeOtherChecks() {
-        val decision = decide(
-            action = "example.UNKNOWN",
-            autoStartEnabled = false,
-        )
+        val decision = decide(action = "example.UNKNOWN", autoStartEnabled = false)
 
         assertFalse(decision.shouldStart)
         assertEquals(AutoStartEvent.UNKNOWN, decision.event)
@@ -81,22 +104,24 @@ class AutoStartDecisionEngineTest {
                 "START_REQUESTED",
             ),
         )
-        assertNull(
-            AutoStartDiagnosticRules.fromStoredValues("INVALID", 0L, "INVALID"),
-        )
+        assertNull(AutoStartDiagnosticRules.fromStoredValues("INVALID", 0L, "INVALID"))
     }
 
     private fun decide(
         action: String = AutoStartEvent.BOOT_COMPLETED.intentAction.orEmpty(),
         autoStartEnabled: Boolean = true,
         overlayPermissionGranted: Boolean = true,
-        firstApplicationValid: Boolean = true,
-        secondApplicationValid: Boolean = true,
+        validApplicationCount: Int = 1,
     ): AutoStartDecision = AutoStartDecisionEngine.decide(
         action,
         autoStartEnabled,
         overlayPermissionGranted,
-        firstApplicationValid,
-        secondApplicationValid,
+        validApplicationCount,
+    )
+
+    private fun application(number: Int): SelectedApp = SelectedApp(
+        displayName = "Aplicação $number",
+        packageName = "com.example.app$number",
+        activityName = "com.example.app$number.MainActivity",
     )
 }

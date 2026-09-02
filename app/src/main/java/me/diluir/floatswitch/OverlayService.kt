@@ -19,6 +19,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.provider.Settings
+import android.view.ContextThemeWrapper
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
@@ -44,6 +45,7 @@ class OverlayService : Service() {
     private lateinit var autoStartStateStore: AutoStartStateStore
     private var overlayView: View? = null
     private var overlayButtons: List<ImageButton> = emptyList()
+    private var displayedSelections: List<SelectedApp> = emptyList()
     private var currentPosition = OverlayPositionRules.defaultPosition
     private var activePointerId = MotionEvent.INVALID_POINTER_ID
     private var gestureView: View? = null
@@ -67,8 +69,8 @@ class OverlayService : Service() {
                 stopForInvalidState(AutoStartResult.OVERLAY_PERMISSION_MISSING)
                 return
             }
-            val invalidApplication = try {
-                findInvalidStoredApplication()
+            val validSelections = try {
+                validateStoredApplications()
             } catch (_: SecurityException) {
                 stopForInvalidState(AutoStartResult.SECURITY_EXCEPTION)
                 return
@@ -76,9 +78,30 @@ class OverlayService : Service() {
                 stopForInvalidState(AutoStartResult.RUNTIME_EXCEPTION)
                 return
             }
-            if (invalidApplication != null) {
-                stopForInvalidState(invalidApplication)
+            if (validSelections.isEmpty()) {
+                stopForInvalidState(AutoStartResult.NO_VALID_APPLICATIONS)
                 return
+            }
+            if (validSelections != displayedSelections) {
+                val applications = try {
+                    loadSelectedApplications()
+                } catch (_: SecurityException) {
+                    stopForInvalidState(AutoStartResult.SECURITY_EXCEPTION)
+                    return
+                } catch (_: RuntimeException) {
+                    stopForInvalidState(AutoStartResult.RUNTIME_EXCEPTION)
+                    return
+                }
+                when (applications) {
+                    is SelectedApplicationsResult.Invalid -> {
+                        stopForInvalidState(applications.reason)
+                        return
+                    }
+
+                    is SelectedApplicationsResult.Valid -> {
+                        showOrUpdateOverlay(applications.applications)
+                    }
+                }
             }
             stateCheckHandler.postDelayed(this, STATE_CHECK_INTERVAL_MS)
         }
@@ -223,59 +246,37 @@ class OverlayService : Service() {
     }
 
     private fun loadSelectedApplications(): SelectedApplicationsResult {
-        val installedApps = AppSlot.values().map { slot ->
-            val invalidReason = slot.invalidResult()
-            val savedSelection = selectedAppsStore.load(slot)
-                ?: return SelectedApplicationsResult.Invalid(invalidReason)
-            val installedApp = launcherAppsRepository.findInstalledApp(savedSelection)
-            if (installedApp == null) {
-                selectedAppsStore.clear(slot)
-                return SelectedApplicationsResult.Invalid(invalidReason)
-            }
-            if (installedApp.selection != savedSelection) {
-                selectedAppsStore.save(slot, installedApp.selection)
-            }
-            installedApp
+        val storedSelections = selectedAppsStore.load()
+        if (storedSelections.isEmpty()) {
+            return SelectedApplicationsResult.Invalid(AutoStartResult.NO_VALID_APPLICATIONS)
         }
-
-        if (
-            installedApps[0].selection.packageName ==
-            installedApps[1].selection.packageName
-        ) {
-            selectedAppsStore.clear(AppSlot.SECOND)
-            return SelectedApplicationsResult.Invalid(AutoStartResult.SECOND_APP_INVALID)
+        val installedApps = launcherAppsRepository.resolveInstalledApps(storedSelections)
+            .filterNotNull()
+        val validSelections = installedApps.map(InstalledLauncherApp::selection)
+        if (validSelections != storedSelections) selectedAppsStore.save(validSelections)
+        if (installedApps.isEmpty()) {
+            return SelectedApplicationsResult.Invalid(AutoStartResult.NO_VALID_APPLICATIONS)
         }
         return SelectedApplicationsResult.Valid(installedApps)
     }
 
-    private fun findInvalidStoredApplication(): AutoStartResult? {
-        val firstSelection = selectedAppsStore.load(AppSlot.FIRST)
-        if (firstSelection == null) {
-            selectedAppsStore.clear(AppSlot.FIRST)
-            return AutoStartResult.FIRST_APP_INVALID
-        }
-
-        val secondSelection = selectedAppsStore.load(AppSlot.SECOND)
-        if (secondSelection == null) {
-            selectedAppsStore.clear(AppSlot.SECOND)
-            return AutoStartResult.SECOND_APP_INVALID
-        }
-        val activityValidity = launcherAppsRepository.validateLauncherActivities(
-            listOf(firstSelection, secondSelection),
+    private fun validateStoredApplications(): List<SelectedApp> {
+        val storedSelections = selectedAppsStore.load()
+        val activityValidity = launcherAppsRepository.validateLauncherActivities(storedSelections)
+        val validSelections = SelectedAppsRules.availableApplications(
+            storedSelections,
+            activityValidity,
         )
-        if (!activityValidity[0]) {
-            selectedAppsStore.clear(AppSlot.FIRST)
-            return AutoStartResult.FIRST_APP_INVALID
-        }
-        if (!activityValidity[1] || secondSelection.packageName == firstSelection.packageName) {
-            selectedAppsStore.clear(AppSlot.SECOND)
-            return AutoStartResult.SECOND_APP_INVALID
-        }
-        return null
+        if (validSelections != storedSelections) selectedAppsStore.save(validSelections)
+        return validSelections
     }
 
     private fun showOrUpdateOverlay(installedApps: List<InstalledLauncherApp>) {
         if (overlayView == null) {
+            createOverlay(installedApps)
+        } else if (overlayButtons.size != installedApps.size) {
+            resetGestureState()
+            removeOverlay()
             createOverlay(installedApps)
         } else {
             updateOverlayButtons(installedApps)
@@ -290,16 +291,14 @@ class OverlayService : Service() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             layoutDirection = View.LAYOUT_DIRECTION_LTR
-            addView(
-                buttons[0],
-                LinearLayout.LayoutParams(buttonSize, buttonSize),
-            )
-            addView(
-                buttons[1],
-                LinearLayout.LayoutParams(buttonSize, buttonSize).apply {
-                    topMargin = buttonSpacing
-                },
-            )
+            buttons.forEachIndexed { index, button ->
+                addView(
+                    button,
+                    LinearLayout.LayoutParams(buttonSize, buttonSize).apply {
+                        if (index > 0) topMargin = buttonSpacing
+                    },
+                )
+            }
         }
         val layoutParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -346,7 +345,9 @@ class OverlayService : Service() {
         }
     }
 
-    private fun createOverlayButton(): ImageButton = OverlayImageButton(this).apply {
+    private fun createOverlayButton(): ImageButton = OverlayImageButton(
+        ContextThemeWrapper(this, R.style.Theme_FloatSwitch),
+    ).apply {
         setBackgroundResource(R.drawable.overlay_button_background)
         scaleType = ImageView.ScaleType.CENTER_INSIDE
         val iconPadding = resources.getDimensionPixelSize(R.dimen.overlay_button_icon_padding)
@@ -357,6 +358,7 @@ class OverlayService : Service() {
     private fun updateOverlayButtons(installedApps: List<InstalledLauncherApp>) {
         if (overlayButtons.size != installedApps.size) return
 
+        displayedSelections = installedApps.map(InstalledLauncherApp::selection)
         overlayButtons.zip(installedApps).forEach { (button, installedApp) ->
             button.imageTintList = null
             button.setImageDrawable(installedApp.icon)
@@ -655,11 +657,7 @@ class OverlayService : Service() {
         }
         overlayView = null
         overlayButtons = emptyList()
-    }
-
-    private fun AppSlot.invalidResult(): AutoStartResult = when (this) {
-        AppSlot.FIRST -> AutoStartResult.FIRST_APP_INVALID
-        AppSlot.SECOND -> AutoStartResult.SECOND_APP_INVALID
+        displayedSelections = emptyList()
     }
 
     private inner class OverlayImageButton(context: Context) : AppCompatImageButton(context) {

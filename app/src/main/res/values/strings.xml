@@ -1,20 +1,29 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">FloatSwitch</string>
     <string name="screen_title">Atalhos flutuantes</string>
-    <string name="screen_description">Escolha duas aplicações para criar os atalhos flutuantes.</string>
+    <string name="screen_description">Escolha entre uma e seis aplicações e ordene os atalhos flutuantes.</string>
     <string name="overlay_move_guidance">Mantenha premido um atalho para mover o conjunto.</string>
-    <string name="application_one_label">Aplicação 1</string>
-    <string name="application_two_label">Aplicação 2</string>
-    <string name="no_application_selected">Nenhuma aplicação escolhida</string>
-    <string name="button_choose_application">Escolher</string>
     <string name="button_change_application">Alterar</string>
-    <string name="no_application_icon_description">Posição sem aplicação escolhida</string>
     <string name="application_icon_generic_description">Ícone da aplicação</string>
     <string name="application_icon_description">Ícone de %1$s</string>
     <string name="application_selection_saved">%1$s foi escolhida.</string>
-    <string name="duplicate_application_not_allowed">Escolha uma aplicação diferente para cada posição.</string>
+    <string name="duplicate_application_not_allowed">Esta aplicação já pertence à lista.</string>
     <string name="invalid_application_selection_removed">Uma aplicação escolhida já não está disponível e foi removida da configuração.</string>
-    <string name="two_applications_required">Escolha duas aplicações válidas antes de mostrar os atalhos.</string>
+    <string name="applications_heading">Aplicações</string>
+    <string name="application_count" tools:ignore="PluralsCandidate">%1$d de %2$d aplicações</string>
+    <string name="application_count_initial">0 de 6 aplicações</string>
+    <string name="application_position_number" translatable="false">%1$d</string>
+    <string name="button_add_application">Adicionar aplicação</string>
+    <string name="change_application_description">Alterar %1$s</string>
+    <string name="remove_application_description">Remover %1$s</string>
+    <string name="move_application_up_description">Mover %1$s para cima</string>
+    <string name="move_application_down_description">Mover %1$s para baixo</string>
+    <string name="tooltip_move_application_up">Mover para cima</string>
+    <string name="tooltip_move_application_down">Mover para baixo</string>
+    <string name="tooltip_remove_application">Remover aplicação</string>
+    <string name="application_removed">A aplicação foi removida da lista.</string>
+    <string name="last_application_removed">A última aplicação foi removida e os atalhos foram ocultados.</string>
+    <string name="at_least_one_application_required">Escolha pelo menos uma aplicação válida antes de mostrar os atalhos.</string>
     <string name="app_picker_title">Escolher aplicação</string>
     <string name="app_picker_search_hint">Pesquisar por nome</string>
     <string name="app_picker_empty">Nenhuma aplicação encontrada.</string>
@@ -27,7 +36,7 @@
     <string name="auto_start_enabled_feedback">O arranque automático foi activado.</string>
     <string name="auto_start_disabled_feedback">O arranque automático foi desactivado. Os atalhos actuais mantêm-se visíveis.</string>
     <string name="auto_start_requires_overlay">Conceda a autorização “Mostrar sobre outras aplicações” antes de activar o arranque automático.</string>
-    <string name="auto_start_requires_apps">Escolha duas aplicações válidas antes de activar o arranque automático.</string>
+    <string name="auto_start_requires_apps">Escolha pelo menos uma aplicação válida antes de activar o arranque automático.</string>
     <string name="auto_start_diagnostic_never">Último arranque automático: nunca</string>
     <string name="auto_start_diagnostic_format">Último arranque automático: %1$s · %2$s · %3$s</string>
     <string name="auto_start_event_boot">arranque do dispositivo</string>
@@ -39,13 +48,15 @@
     <string name="auto_start_result_overlay_permission">ignorado: autorização de sobreposição em falta</string>
     <string name="auto_start_result_first_app">ignorado: Aplicação 1 inválida</string>
     <string name="auto_start_result_second_app">ignorado: Aplicação 2 inválida</string>
+    <string name="auto_start_result_no_applications">ignorado: nenhuma aplicação válida</string>
+    <string name="auto_start_result_too_many_applications">ignorado: existem aplicações a mais</string>
     <string name="auto_start_result_unknown">ignorado: acção desconhecida</string>
     <string name="auto_start_result_not_allowed">falhou: Android não permitiu iniciar o serviço em primeiro plano</string>
     <string name="auto_start_result_security">falhou: autorização de sistema insuficiente</string>
     <string name="auto_start_result_runtime">falhou: erro ao pedir o serviço</string>
     <string name="button_show_shortcuts">Mostrar atalhos</string>
     <string name="button_hide_shortcuts">Ocultar atalhos</string>
-    <string name="initial_guidance">Escolha duas aplicações, conceda a autorização e seleccione “Mostrar atalhos”.</string>
+    <string name="initial_guidance">Escolha pelo menos uma aplicação, conceda a autorização e seleccione “Mostrar atalhos”.</string>
     <string name="overlay_permission_required">Para mostrar os atalhos, conceda primeiro a autorização “Mostrar sobre outras aplicações”.</string>
     <string name="notification_permission_explanation">Para manter uma notificação visível enquanto os atalhos estão activos, autorize as notificações.</string>
     <string name="notification_permission_denied">A autorização de notificações não foi concedida. Os atalhos não foram iniciados.</string>

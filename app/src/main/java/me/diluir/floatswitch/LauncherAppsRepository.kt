@@ -19,7 +19,9 @@ class LauncherAppsRepository(
     private val packageManager: PackageManager,
     private val ownPackageName: String,
 ) {
-    fun loadInstalledApps(excludedPackageName: String? = null): List<InstalledLauncherApp> {
+    fun loadInstalledApps(
+        excludedPackageNames: Set<String> = emptySet(),
+    ): List<InstalledLauncherApp> {
         val collator = Collator.getInstance(Locale.forLanguageTag("pt-PT")).apply {
             strength = Collator.PRIMARY
         }
@@ -28,7 +30,7 @@ class LauncherAppsRepository(
             .mapNotNull(::toInstalledApp)
             .filter { installedApp ->
                 installedApp.selection.packageName != ownPackageName &&
-                    installedApp.selection.packageName != excludedPackageName
+                    installedApp.selection.packageName !in excludedPackageNames
             }
             .distinctBy { it.selection.packageName }
             .sortedWith { first, second ->
@@ -36,14 +38,22 @@ class LauncherAppsRepository(
             }
     }
 
-    fun findInstalledApp(selectedApp: SelectedApp): InstalledLauncherApp? =
-        queryLauncherActivities()
-            .firstOrNull { resolveInfo ->
-                val activityInfo = resolveInfo.activityInfo ?: return@firstOrNull false
-                activityInfo.packageName == selectedApp.packageName &&
-                    activityInfo.name == selectedApp.activityName
+    fun resolveInstalledApps(
+        selectedApps: List<SelectedApp>,
+    ): List<InstalledLauncherApp?> {
+        val installedByComponent = queryLauncherActivities()
+            .mapNotNull(::toInstalledApp)
+            .filter { it.selection.packageName != ownPackageName }
+            .associateBy { installedApp ->
+                ComponentName(
+                    installedApp.selection.packageName,
+                    installedApp.selection.activityName,
+                )
             }
-            ?.let(::toInstalledApp)
+        return selectedApps.map { selectedApp ->
+            installedByComponent[ComponentName(selectedApp.packageName, selectedApp.activityName)]
+        }
+    }
 
     fun validateLauncherActivities(selectedApps: List<SelectedApp>): List<Boolean> {
         val availableComponents = queryLauncherActivities()

@@ -9,8 +9,11 @@ import android.content.res.ColorStateList
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.LayoutInflater
 import android.widget.Button
+import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,14 +32,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var autoStartDiagnosticText: TextView
     private lateinit var autoStartSwitch: SwitchCompat
     private lateinit var showShortcutsButton: Button
-    private lateinit var firstSlotViews: AppSlotViews
-    private lateinit var secondSlotViews: AppSlotViews
+    private lateinit var addApplicationButton: Button
+    private lateinit var applicationCountText: TextView
+    private lateinit var applicationsContainer: LinearLayout
     private lateinit var selectedAppsStore: SelectedAppsStore
     private lateinit var launcherAppsRepository: LauncherAppsRepository
     private lateinit var autoStartStateStore: AutoStartStateStore
 
-    private var firstInstalledApp: InstalledLauncherApp? = null
-    private var secondInstalledApp: InstalledLauncherApp? = null
+    private var installedApps: List<InstalledLauncherApp> = emptyList()
     private var updatingAutoStartSwitch = false
 
     private val overlayPermissionLauncher = registerForActivityResult(
@@ -48,11 +51,8 @@ class MainActivity : AppCompatActivity() {
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
-        if (granted) {
-            showShortcuts()
-        } else {
-            feedbackText.setText(R.string.notification_permission_denied)
-        }
+        if (granted) showShortcuts()
+        else feedbackText.setText(R.string.notification_permission_denied)
     }
 
     private val appPickerLauncher = registerForActivityResult(
@@ -60,21 +60,40 @@ class MainActivity : AppCompatActivity() {
     ) { result ->
         if (result.resultCode != Activity.RESULT_OK) return@registerForActivityResult
 
-        val slot = AppSlot.fromStorageKey(
-            result.data?.getStringExtra(AppPickerActivity.EXTRA_SLOT),
+        val selectionIndex = result.data?.getIntExtra(
+            AppPickerActivity.EXTRA_SELECTION_INDEX,
+            Int.MIN_VALUE,
         ) ?: return@registerForActivityResult
         val selectedApp = SelectedAppCodec.decode(
             result.data?.getStringExtra(AppPickerActivity.EXTRA_SELECTION),
         ) ?: return@registerForActivityResult
-        val otherSelection = selectedAppsStore.load(slot.other())
-
-        if (!AppSelectionRules.canUseInSlot(selectedApp, otherSelection)) {
+        val current = selectedAppsStore.load()
+        if (
+            selectionIndex != AppPickerActivity.APPEND_INDEX &&
+            selectionIndex !in current.indices
+        ) {
+            return@registerForActivityResult
+        }
+        val duplicate = current.withIndex().any { (index, application) ->
+            index != selectionIndex && application.packageName == selectedApp.packageName
+        }
+        if (duplicate) {
             feedbackText.setText(R.string.duplicate_application_not_allowed)
             return@registerForActivityResult
         }
 
-        selectedAppsStore.save(slot, selectedApp)
+        val updated = if (selectionIndex == AppPickerActivity.APPEND_INDEX) {
+            SelectedAppsRules.add(current, selectedApp)
+        } else {
+            SelectedAppsRules.replace(current, selectionIndex, selectedApp)
+        }
+        if (updated == current && selectionIndex == AppPickerActivity.APPEND_INDEX) {
+            return@registerForActivityResult
+        }
+
+        selectedAppsStore.save(updated)
         refreshSelectedApplications(showInvalidFeedback = false)
+        refreshOverlayIfActive()
         feedbackText.text = getString(
             R.string.application_selection_saved,
             selectedApp.displayName,
@@ -94,16 +113,9 @@ class MainActivity : AppCompatActivity() {
         autoStartDiagnosticText = findViewById(R.id.autoStartDiagnostic)
         autoStartSwitch = findViewById(R.id.autoStartSwitch)
         showShortcutsButton = findViewById(R.id.showShortcutsButton)
-        firstSlotViews = AppSlotViews(
-            icon = findViewById(R.id.applicationOneIcon),
-            name = findViewById(R.id.applicationOneName),
-            chooseButton = findViewById(R.id.chooseApplicationOneButton),
-        )
-        secondSlotViews = AppSlotViews(
-            icon = findViewById(R.id.applicationTwoIcon),
-            name = findViewById(R.id.applicationTwoName),
-            chooseButton = findViewById(R.id.chooseApplicationTwoButton),
-        )
+        addApplicationButton = findViewById(R.id.addApplicationButton)
+        applicationCountText = findViewById(R.id.applicationCountText)
+        applicationsContainer = findViewById(R.id.selectedApplicationsContainer)
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { view, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -114,22 +126,13 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.grantOverlayPermissionButton).setOnClickListener {
             openOverlayPermissionSettings()
         }
-        firstSlotViews.chooseButton.setOnClickListener {
-            openApplicationPicker(AppSlot.FIRST)
+        addApplicationButton.setOnClickListener {
+            openApplicationPicker(AppPickerActivity.APPEND_INDEX)
         }
-        secondSlotViews.chooseButton.setOnClickListener {
-            openApplicationPicker(AppSlot.SECOND)
-        }
-        showShortcutsButton.setOnClickListener {
-            showShortcuts()
-        }
-        findViewById<Button>(R.id.hideShortcutsButton).setOnClickListener {
-            hideShortcuts()
-        }
+        showShortcutsButton.setOnClickListener { showShortcuts() }
+        findViewById<Button>(R.id.hideShortcutsButton).setOnClickListener { hideShortcuts() }
         autoStartSwitch.setOnCheckedChangeListener { _, enabled ->
-            if (!updatingAutoStartSwitch) {
-                changeAutoStartPreference(enabled)
-            }
+            if (!updatingAutoStartSwitch) changeAutoStartPreference(enabled)
         }
     }
 
@@ -140,86 +143,125 @@ class MainActivity : AppCompatActivity() {
         updateAutoStartInformation()
     }
 
-    private fun openApplicationPicker(slot: AppSlot) {
-        val excludedPackageName = when (slot) {
-            AppSlot.FIRST -> secondInstalledApp?.selection?.packageName
-            AppSlot.SECOND -> firstInstalledApp?.selection?.packageName
+    private fun openApplicationPicker(selectionIndex: Int) {
+        val excludedPackages = installedApps.mapIndexedNotNull { index, app ->
+            app.selection.packageName.takeIf { selectionIndex != index }
         }
         appPickerLauncher.launch(
-            AppPickerActivity.createIntent(this, slot, excludedPackageName),
+            AppPickerActivity.createIntent(this, selectionIndex, excludedPackages),
         )
     }
 
     private fun refreshSelectedApplications(showInvalidFeedback: Boolean = true) {
-        var invalidSelectionRemoved = false
-        firstInstalledApp = loadValidSelection(AppSlot.FIRST) {
-            invalidSelectionRemoved = true
-        }
-        secondInstalledApp = loadValidSelection(AppSlot.SECOND) {
-            invalidSelectionRemoved = true
-        }
+        val stored = selectedAppsStore.load()
+        val resolved = launcherAppsRepository.resolveInstalledApps(stored)
+        installedApps = resolved.filterNotNull()
+        val refreshedSelections = installedApps.map(InstalledLauncherApp::selection)
+        val invalidSelectionRemoved = refreshedSelections.size != stored.size
+        if (refreshedSelections != stored) selectedAppsStore.save(refreshedSelections)
 
-        if (
-            firstInstalledApp != null &&
-            firstInstalledApp?.selection?.packageName == secondInstalledApp?.selection?.packageName
-        ) {
-            selectedAppsStore.clear(AppSlot.SECOND)
-            secondInstalledApp = null
-            invalidSelectionRemoved = true
-        }
-
-        updateSlotViews(firstSlotViews, firstInstalledApp)
-        updateSlotViews(secondSlotViews, secondInstalledApp)
-        showShortcutsButton.isEnabled = firstInstalledApp != null && secondInstalledApp != null
+        renderApplications()
+        showShortcutsButton.isEnabled = installedApps.isNotEmpty()
+        addApplicationButton.isEnabled = installedApps.size < SelectedAppsRules.MAX_APPLICATIONS
 
         if (invalidSelectionRemoved && showInvalidFeedback) {
             feedbackText.setText(R.string.invalid_application_selection_removed)
         }
+        if (installedApps.isEmpty() && autoStartStateStore.isOverlayRequestedActive()) {
+            hideShortcuts(announce = false)
+        }
     }
 
-    private fun loadValidSelection(
-        slot: AppSlot,
-        onInvalid: () -> Unit,
-    ): InstalledLauncherApp? {
-        val savedSelection = selectedAppsStore.load(slot) ?: return null
-        val installedApp = launcherAppsRepository.findInstalledApp(savedSelection)
-        if (installedApp == null) {
-            selectedAppsStore.clear(slot)
-            onInvalid()
-            return null
-        }
-
-        if (installedApp.selection != savedSelection) {
-            selectedAppsStore.save(slot, installedApp.selection)
-        }
-        return installedApp
-    }
-
-    private fun updateSlotViews(
-        slotViews: AppSlotViews,
-        installedApp: InstalledLauncherApp?,
-    ) {
-        if (installedApp == null) {
-            slotViews.icon.setImageResource(R.drawable.ic_app_placeholder)
-            slotViews.icon.imageTintList = ColorStateList.valueOf(
-                ContextCompat.getColor(this, R.color.overlay_icon),
-            )
-            slotViews.icon.contentDescription = getString(
-                R.string.no_application_icon_description,
-            )
-            slotViews.name.setText(R.string.no_application_selected)
-            slotViews.chooseButton.setText(R.string.button_choose_application)
-            return
-        }
-
-        slotViews.icon.imageTintList = null
-        slotViews.icon.setImageDrawable(installedApp.icon)
-        slotViews.icon.contentDescription = getString(
-            R.string.application_icon_description,
-            installedApp.selection.displayName,
+    private fun renderApplications() {
+        applicationsContainer.removeAllViews()
+        applicationCountText.text = getString(
+            R.string.application_count,
+            installedApps.size,
+            SelectedAppsRules.MAX_APPLICATIONS,
         )
-        slotViews.name.text = installedApp.selection.displayName
-        slotViews.chooseButton.setText(R.string.button_change_application)
+        installedApps.forEachIndexed { index, installedApp ->
+            val row = LayoutInflater.from(this).inflate(
+                R.layout.item_selected_application,
+                applicationsContainer,
+                false,
+            )
+            row.findViewById<TextView>(R.id.applicationPosition).text = getString(
+                R.string.application_position_number,
+                index + 1,
+            )
+            row.findViewById<ImageView>(R.id.selectedApplicationIcon).apply {
+                imageTintList = null
+                setImageDrawable(installedApp.icon)
+                contentDescription = getString(
+                    R.string.application_icon_description,
+                    installedApp.selection.displayName,
+                )
+            }
+            row.findViewById<TextView>(R.id.selectedApplicationName).text =
+                installedApp.selection.displayName
+            row.findViewById<Button>(R.id.changeApplicationButton).apply {
+                contentDescription = getString(
+                    R.string.change_application_description,
+                    installedApp.selection.displayName,
+                )
+                setOnClickListener { openApplicationPicker(index) }
+            }
+            row.findViewById<ImageButton>(R.id.removeApplicationButton).apply {
+                contentDescription = getString(
+                    R.string.remove_application_description,
+                    installedApp.selection.displayName,
+                )
+                setOnClickListener { removeApplication(index) }
+            }
+            row.findViewById<ImageButton>(R.id.moveApplicationUpButton).apply {
+                isEnabled = index > 0
+                contentDescription = getString(
+                    R.string.move_application_up_description,
+                    installedApp.selection.displayName,
+                )
+                setOnClickListener { moveApplication(index, index - 1) }
+            }
+            row.findViewById<ImageButton>(R.id.moveApplicationDownButton).apply {
+                isEnabled = index < installedApps.lastIndex
+                contentDescription = getString(
+                    R.string.move_application_down_description,
+                    installedApp.selection.displayName,
+                )
+                setOnClickListener { moveApplication(index, index + 1) }
+            }
+            applicationsContainer.addView(row)
+        }
+    }
+
+    private fun removeApplication(index: Int) {
+        val updated = selectedAppsStore.removeAt(index)
+        if (updated.isEmpty()) autoStartStateStore.setOverlayRequestedActive(false)
+        refreshSelectedApplications(showInvalidFeedback = false)
+        if (updated.isEmpty()) {
+            hideShortcuts(announce = false)
+            feedbackText.setText(R.string.last_application_removed)
+        } else {
+            refreshOverlayIfActive()
+            feedbackText.setText(R.string.application_removed)
+        }
+    }
+
+    private fun moveApplication(fromIndex: Int, toIndex: Int) {
+        selectedAppsStore.move(fromIndex, toIndex)
+        refreshSelectedApplications(showInvalidFeedback = false)
+        refreshOverlayIfActive()
+    }
+
+    private fun refreshOverlayIfActive() {
+        if (!autoStartStateStore.isOverlayRequestedActive() || installedApps.isEmpty()) return
+        try {
+            ContextCompat.startForegroundService(
+                this,
+                Intent(this, OverlayService::class.java).setAction(OverlayService.ACTION_SHOW),
+            )
+        } catch (_: RuntimeException) {
+            feedbackText.setText(R.string.shortcuts_start_failed)
+        }
     }
 
     private fun openOverlayPermissionSettings() {
@@ -227,7 +269,6 @@ class MainActivity : AppCompatActivity() {
             Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
             "package:$packageName".toUri(),
         )
-
         try {
             overlayPermissionLauncher.launch(packageSettingsIntent)
         } catch (_: ActivityNotFoundException) {
@@ -247,13 +288,9 @@ class MainActivity : AppCompatActivity() {
         } else {
             R.color.status_missing_text
         }
-
         permissionStateText.setText(
-            if (permissionGranted) {
-                R.string.overlay_permission_granted
-            } else {
-                R.string.overlay_permission_missing
-            },
+            if (permissionGranted) R.string.overlay_permission_granted
+            else R.string.overlay_permission_missing,
         )
         permissionStateText.backgroundTintList = ColorStateList.valueOf(
             ContextCompat.getColor(this, backgroundColor),
@@ -276,7 +313,7 @@ class MainActivity : AppCompatActivity() {
             feedbackText.setText(R.string.auto_start_requires_overlay)
             return
         }
-        if (firstInstalledApp == null || secondInstalledApp == null) {
+        if (installedApps.isEmpty()) {
             autoStartStateStore.setAutoStartEnabled(false)
             setAutoStartSwitchChecked(false)
             feedbackText.setText(R.string.auto_start_requires_apps)
@@ -294,7 +331,6 @@ class MainActivity : AppCompatActivity() {
             autoStartDiagnosticText.setText(R.string.auto_start_diagnostic_never)
             return
         }
-
         val formattedDate = DateFormat.getDateTimeInstance(
             DateFormat.MEDIUM,
             DateFormat.SHORT,
@@ -315,17 +351,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun showShortcuts() {
         refreshSelectedApplications()
-        if (firstInstalledApp == null || secondInstalledApp == null) {
-            feedbackText.setText(R.string.two_applications_required)
+        if (installedApps.isEmpty()) {
+            feedbackText.setText(R.string.at_least_one_application_required)
             return
         }
-
         if (!Settings.canDrawOverlays(this)) {
             updateOverlayPermissionState()
             feedbackText.setText(R.string.overlay_permission_required)
             return
         }
-
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(
@@ -337,7 +371,6 @@ class MainActivity : AppCompatActivity() {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             return
         }
-
         try {
             ContextCompat.startForegroundService(
                 this,
@@ -350,21 +383,20 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun hideShortcuts() {
+    private fun hideShortcuts(announce: Boolean = true) {
         autoStartStateStore.setOverlayRequestedActive(false)
         try {
             val stoppedService = startService(
                 Intent(this, OverlayService::class.java).setAction(OverlayService.ACTION_STOP),
             )
-            feedbackText.setText(
-                if (stoppedService != null) {
-                    R.string.shortcuts_hidden
-                } else {
-                    R.string.shortcuts_hide_failed
-                },
-            )
+            if (announce) {
+                feedbackText.setText(
+                    if (stoppedService != null) R.string.shortcuts_hidden
+                    else R.string.shortcuts_hide_failed,
+                )
+            }
         } catch (_: RuntimeException) {
-            feedbackText.setText(R.string.shortcuts_hide_failed)
+            if (announce) feedbackText.setText(R.string.shortcuts_hide_failed)
         }
     }
 
@@ -378,10 +410,9 @@ class MainActivity : AppCompatActivity() {
     private fun AutoStartResult.displayNameResource(): Int = when (this) {
         AutoStartResult.START_REQUESTED -> R.string.auto_start_result_requested
         AutoStartResult.AUTO_START_DISABLED -> R.string.auto_start_result_disabled
-        AutoStartResult.OVERLAY_PERMISSION_MISSING -> {
-            R.string.auto_start_result_overlay_permission
-        }
-
+        AutoStartResult.OVERLAY_PERMISSION_MISSING -> R.string.auto_start_result_overlay_permission
+        AutoStartResult.NO_VALID_APPLICATIONS -> R.string.auto_start_result_no_applications
+        AutoStartResult.TOO_MANY_APPLICATIONS -> R.string.auto_start_result_too_many_applications
         AutoStartResult.FIRST_APP_INVALID -> R.string.auto_start_result_first_app
         AutoStartResult.SECOND_APP_INVALID -> R.string.auto_start_result_second_app
         AutoStartResult.UNKNOWN_ACTION -> R.string.auto_start_result_unknown
@@ -389,15 +420,4 @@ class MainActivity : AppCompatActivity() {
         AutoStartResult.SECURITY_EXCEPTION -> R.string.auto_start_result_security
         AutoStartResult.RUNTIME_EXCEPTION -> R.string.auto_start_result_runtime
     }
-
-    private fun AppSlot.other(): AppSlot = when (this) {
-        AppSlot.FIRST -> AppSlot.SECOND
-        AppSlot.SECOND -> AppSlot.FIRST
-    }
-
-    private data class AppSlotViews(
-        val icon: ImageView,
-        val name: TextView,
-        val chooseButton: Button,
-    )
 }
