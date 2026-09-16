@@ -10,6 +10,8 @@ class OverlayAppearanceRulesTest {
             OverlayAppearance(
                 buttonSizePercent = 100,
                 buttonSpacing = OverlayButtonSpacing.NORMAL,
+                backgroundEnabled = false,
+                backgroundOpacityPercent = 50,
             ),
             OverlayAppearanceRules.defaultAppearance,
         )
@@ -21,8 +23,10 @@ class OverlayAppearanceRulesTest {
             OverlayAppearance(
                 buttonSizePercent = 150,
                 buttonSpacing = OverlayButtonSpacing.WIDE,
+                backgroundEnabled = true,
+                backgroundOpacityPercent = 80,
             ),
-            OverlayAppearanceRules.fromStoredValues(150, null, "WIDE"),
+            OverlayAppearanceRules.fromStoredValues(150, null, "WIDE", true, 80),
         )
     }
 
@@ -73,5 +77,27 @@ class OverlayAppearanceRulesTest {
         assertEquals(96, OverlayAppearanceRules.visualSize(64, 150))
         assertEquals(48, OverlayAppearanceRules.touchTargetSize(32, 48))
         assertEquals(64, OverlayAppearanceRules.touchTargetSize(64, 48))
+    }
+
+    @Test
+    fun invalid_background_values_fall_back_to_disabled_at_fifty_percent() {
+        val appearance = OverlayAppearanceRules.fromStoredValues(
+            buttonSizePercent = 100,
+            legacyButtonSize = null,
+            buttonSpacing = "NORMAL",
+            backgroundEnabled = null,
+            backgroundOpacityPercent = 55,
+        )
+
+        assertEquals(false, appearance.backgroundEnabled)
+        assertEquals(50, appearance.backgroundOpacityPercent)
+    }
+
+    @Test
+    fun background_opacity_changes_in_ten_percent_steps_and_stops_at_bounds() {
+        assertEquals(50, OverlayAppearanceRules.changeBackgroundOpacity(60, -1))
+        assertEquals(70, OverlayAppearanceRules.changeBackgroundOpacity(60, 1))
+        assertEquals(10, OverlayAppearanceRules.changeBackgroundOpacity(10, -1))
+        assertEquals(100, OverlayAppearanceRules.changeBackgroundOpacity(100, 1))
     }
 }

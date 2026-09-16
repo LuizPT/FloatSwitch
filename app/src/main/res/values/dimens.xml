@@ -45,4 +45,6 @@
     <dimen name="overlay_appearance_percent_width">64dp</dimen>
     <dimen name="overlay_appearance_section_spacing">12dp</dimen>
     <dimen name="overlay_appearance_label_spacing">6dp</dimen>
+    <dimen name="overlay_group_background_padding">6dp</dimen>
+    <dimen name="overlay_group_background_corner_radius">20dp</dimen>
 </resources>

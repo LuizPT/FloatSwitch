@@ -9,6 +9,7 @@
     <color name="app_list_divider">#FFDDE1E6</color>
     <color name="overlay_button_background">#FFF0F5FF</color>
     <color name="overlay_button_pressed">#FFD2E3FC</color>
+    <color name="overlay_group_background">#FF3F444C</color>
     <color name="overlay_toggle_background_checked">#FF187A37</color>
     <color name="overlay_toggle_background_unchecked">#FFDDE1E6</color>
     <color name="overlay_toggle_background_disabled">#FFF0F1F3</color>

@@ -14,6 +14,7 @@ import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.graphics.Point
 import android.graphics.Rect
+import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.InsetDrawable
 import android.os.Build
 import android.os.Handler
@@ -332,6 +333,7 @@ class OverlayService : Service() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             layoutDirection = View.LAYOUT_DIRECTION_LTR
+            applyGroupBackground(appearance)
             buttons.forEachIndexed { index, button ->
                 addView(
                     button,
@@ -384,6 +386,22 @@ class OverlayService : Service() {
         } catch (_: RuntimeException) {
             overlayButtons = emptyList()
             stopForInvalidState(AutoStartResult.RUNTIME_EXCEPTION)
+        }
+    }
+
+    private fun LinearLayout.applyGroupBackground(appearance: OverlayAppearance) {
+        if (!appearance.backgroundEnabled) return
+        val containerPadding = resources.getDimensionPixelSize(
+            R.dimen.overlay_group_background_padding,
+        )
+        setPadding(containerPadding, containerPadding, containerPadding, containerPadding)
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = resources.getDimension(
+                R.dimen.overlay_group_background_corner_radius,
+            )
+            setColor(ContextCompat.getColor(this@OverlayService, R.color.overlay_group_background))
+            alpha = (255 * appearance.backgroundOpacityPercent / 100f).roundToInt()
         }
     }
 

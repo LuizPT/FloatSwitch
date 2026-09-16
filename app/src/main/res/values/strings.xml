@@ -18,6 +18,14 @@
     <string name="overlay_spacing_compact">Compacto</string>
     <string name="overlay_spacing_normal">Normal</string>
     <string name="overlay_spacing_wide">Amplo</string>
+    <string name="overlay_background_heading">Fundo dos atalhos</string>
+    <string name="overlay_background_show">Mostrar fundo</string>
+    <string name="overlay_background_description_on">Fundo dos atalhos visível</string>
+    <string name="overlay_background_description_off">Fundo dos atalhos oculto</string>
+    <string name="overlay_background_opacity">Opacidade</string>
+    <string name="overlay_background_opacity_description">Opacidade do fundo: %1$d%%</string>
+    <string name="overlay_background_opacity_decrease_description">Diminuir opacidade do fundo</string>
+    <string name="overlay_background_opacity_increase_description">Aumentar opacidade do fundo</string>
     <string name="button_change_application">Alterar</string>
     <string name="application_icon_generic_description">Ícone da aplicação</string>
     <string name="application_icon_description">Ícone de %1$s</string>
