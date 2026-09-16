@@ -7,12 +7,13 @@
     <string name="overlay_toggle_description_off">Atalhos flutuantes desligados</string>
     <string name="screen_description">Escolha entre uma e seis aplicações e ordene os atalhos flutuantes.</string>
     <string name="overlay_move_guidance">Mantenha premido um atalho para mover o conjunto.</string>
-    <string name="overlay_appearance_heading">Aparência dos atalhos</string>
-    <string name="overlay_appearance_description">As alterações são aplicadas imediatamente quando os atalhos estão activos.</string>
     <string name="overlay_size_heading">Tamanho</string>
-    <string name="overlay_size_small">Pequeno</string>
-    <string name="overlay_size_medium">Médio</string>
-    <string name="overlay_size_large">Grande</string>
+    <string name="overlay_size_decrease">−</string>
+    <string name="overlay_size_increase">+</string>
+    <string name="overlay_size_decrease_description">Diminuir tamanho dos atalhos</string>
+    <string name="overlay_size_increase_description">Aumentar tamanho dos atalhos</string>
+    <string name="overlay_size_percent" translatable="false">%1$d%%</string>
+    <string name="overlay_size_percent_description">Tamanho dos atalhos: %1$d%%</string>
     <string name="overlay_spacing_heading">Espaçamento</string>
     <string name="overlay_spacing_compact">Compacto</string>
     <string name="overlay_spacing_normal">Normal</string>

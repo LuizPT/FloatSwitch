@@ -18,24 +18,29 @@ class OverlayAppearanceControlsView @JvmOverloads constructor(
 ) : LinearLayout(context, attrs) {
     private val appearanceStore = OverlayAppearanceStore(context)
     private val autoStartStateStore = AutoStartStateStore(context)
-    private val sizeGroup = MaterialButtonToggleGroup(context)
     private val spacingGroup = MaterialButtonToggleGroup(context)
+    private val sizePercentText = TextView(context)
+    private val decreaseSizeButton = createSizeStepButton(
+        R.string.overlay_size_decrease,
+        R.string.overlay_size_decrease_description,
+    )
+    private val increaseSizeButton = createSizeStepButton(
+        R.string.overlay_size_increase,
+        R.string.overlay_size_increase_description,
+    )
+    private var currentSizePercent = OverlayAppearanceRules.DEFAULT_SIZE_PERCENT
     private var updatingControls = false
 
     init {
         orientation = VERTICAL
-        addView(createHeading(context.getString(R.string.overlay_appearance_heading)))
-        addView(createDescription(context.getString(R.string.overlay_appearance_description)))
-        addView(createLabel(context.getString(R.string.overlay_size_heading)))
-        configureGroup(sizeGroup)
-        addView(sizeGroup)
-        addSizeButtons()
+        addView(createSizeControls())
         addView(createLabel(context.getString(R.string.overlay_spacing_heading)).apply {
             layoutParams = LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             ).apply {
-                topMargin = dp(12)
+                topMargin = dimension(R.dimen.overlay_appearance_section_spacing)
+                bottomMargin = dimension(R.dimen.overlay_appearance_label_spacing)
             }
         })
         configureGroup(spacingGroup)
@@ -45,21 +50,26 @@ class OverlayAppearanceControlsView @JvmOverloads constructor(
         installListeners()
     }
 
-    private fun createHeading(text: String) = TextView(context).apply {
-        this.text = text
-        setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleMedium)
-    }
-
-    private fun createDescription(text: String) = TextView(context).apply {
-        this.text = text
-        setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium)
-        layoutParams = LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
+    private fun createSizeControls() = LinearLayout(context).apply {
+        orientation = HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        addView(TextView(context).apply {
+            setText(R.string.overlay_size_heading)
+            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelLarge)
+        }, LayoutParams(
+            0,
             ViewGroup.LayoutParams.WRAP_CONTENT,
-        ).apply {
-            topMargin = dp(4)
-            bottomMargin = dp(12)
-        }
+            1f,
+        ))
+        addView(decreaseSizeButton)
+        addView(sizePercentText.apply {
+            gravity = Gravity.CENTER
+            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyLarge)
+        }, LayoutParams(
+            dimension(R.dimen.overlay_appearance_percent_width),
+            dimension(R.dimen.overlay_appearance_control_size),
+        ))
+        addView(increaseSizeButton)
     }
 
     private fun createLabel(text: String) = TextView(context).apply {
@@ -69,7 +79,7 @@ class OverlayAppearanceControlsView @JvmOverloads constructor(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
         ).apply {
-            bottomMargin = dp(6)
+            bottomMargin = dimension(R.dimen.overlay_appearance_label_spacing)
         }
     }
 
@@ -78,12 +88,6 @@ class OverlayAppearanceControlsView @JvmOverloads constructor(
         group.isSelectionRequired = true
         group.orientation = HORIZONTAL
         group.gravity = Gravity.CENTER
-    }
-
-    private fun addSizeButtons() {
-        sizeGroup.addView(createChoiceButton(R.string.overlay_size_small, ID_SIZE_SMALL))
-        sizeGroup.addView(createChoiceButton(R.string.overlay_size_medium, ID_SIZE_MEDIUM))
-        sizeGroup.addView(createChoiceButton(R.string.overlay_size_large, ID_SIZE_LARGE))
     }
 
     private fun addSpacingButtons() {
@@ -104,21 +108,36 @@ class OverlayAppearanceControlsView @JvmOverloads constructor(
         minWidth = 0
         layoutParams = LayoutParams(
             0,
-            dp(48),
+            dimension(R.dimen.overlay_appearance_control_size),
             1f,
+        )
+    }
+
+    private fun createSizeStepButton(textResource: Int, descriptionResource: Int) = MaterialButton(
+        context,
+        null,
+        com.google.android.material.R.attr.materialButtonOutlinedStyle,
+    ).apply {
+        setText(textResource)
+        contentDescription = context.getString(descriptionResource)
+        isAllCaps = false
+        minWidth = 0
+        insetTop = 0
+        insetBottom = 0
+        gravity = Gravity.CENTER
+        setPadding(0, 0, 0, 0)
+        setTextColor(ContextCompat.getColor(context, R.color.screen_text_primary))
+        layoutParams = LayoutParams(
+            dimension(R.dimen.overlay_appearance_control_size),
+            dimension(R.dimen.overlay_appearance_control_size),
         )
     }
 
     private fun restoreSelection() {
         val appearance = appearanceStore.load()
         updatingControls = true
-        sizeGroup.check(
-            when (appearance.buttonSize) {
-                OverlayButtonSize.SMALL -> ID_SIZE_SMALL
-                OverlayButtonSize.MEDIUM -> ID_SIZE_MEDIUM
-                OverlayButtonSize.LARGE -> ID_SIZE_LARGE
-            },
-        )
+        currentSizePercent = appearance.buttonSizePercent
+        updateSizeControls()
         spacingGroup.check(
             when (appearance.buttonSpacing) {
                 OverlayButtonSpacing.COMPACT -> ID_SPACING_COMPACT
@@ -130,15 +149,11 @@ class OverlayAppearanceControlsView @JvmOverloads constructor(
     }
 
     private fun installListeners() {
-        sizeGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (!isChecked || updatingControls) return@addOnButtonCheckedListener
-            val size = when (checkedId) {
-                ID_SIZE_SMALL -> OverlayButtonSize.SMALL
-                ID_SIZE_LARGE -> OverlayButtonSize.LARGE
-                else -> OverlayButtonSize.MEDIUM
-            }
-            appearanceStore.setButtonSize(size)
-            refreshOverlayIfActive()
+        decreaseSizeButton.setOnClickListener {
+            changeSizeBy(-1)
+        }
+        increaseSizeButton.setOnClickListener {
+            changeSizeBy(1)
         }
         spacingGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked || updatingControls) return@addOnButtonCheckedListener
@@ -150,6 +165,28 @@ class OverlayAppearanceControlsView @JvmOverloads constructor(
             appearanceStore.setButtonSpacing(spacing)
             refreshOverlayIfActive()
         }
+    }
+
+    private fun changeSizeBy(stepCount: Int) {
+        val updatedSize = OverlayAppearanceRules.changeSize(currentSizePercent, stepCount)
+        if (updatedSize == currentSizePercent) return
+        currentSizePercent = updatedSize
+        appearanceStore.setButtonSizePercent(updatedSize)
+        updateSizeControls()
+        refreshOverlayIfActive()
+    }
+
+    private fun updateSizeControls() {
+        sizePercentText.text = context.getString(
+            R.string.overlay_size_percent,
+            currentSizePercent,
+        )
+        sizePercentText.contentDescription = context.getString(
+            R.string.overlay_size_percent_description,
+            currentSizePercent,
+        )
+        decreaseSizeButton.isEnabled = currentSizePercent > OverlayAppearanceRules.MIN_SIZE_PERCENT
+        increaseSizeButton.isEnabled = currentSizePercent < OverlayAppearanceRules.MAX_SIZE_PERCENT
     }
 
     private fun refreshOverlayIfActive() {
@@ -169,12 +206,9 @@ class OverlayAppearanceControlsView @JvmOverloads constructor(
         }
     }
 
-    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+    private fun dimension(resource: Int): Int = resources.getDimensionPixelSize(resource)
 
     companion object {
-        private const val ID_SIZE_SMALL = 0x10001
-        private const val ID_SIZE_MEDIUM = 0x10002
-        private const val ID_SIZE_LARGE = 0x10003
         private const val ID_SPACING_COMPACT = 0x10004
         private const val ID_SPACING_NORMAL = 0x10005
         private const val ID_SPACING_WIDE = 0x10006

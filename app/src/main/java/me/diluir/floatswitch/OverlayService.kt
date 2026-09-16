@@ -14,6 +14,7 @@ import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.graphics.Point
 import android.graphics.Rect
+import android.graphics.drawable.InsetDrawable
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -32,6 +33,7 @@ import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.appcompat.widget.AppCompatImageButton
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import kotlin.math.hypot
@@ -305,11 +307,27 @@ class OverlayService : Service() {
         installedApps: List<InstalledLauncherApp>,
         appearance: OverlayAppearance,
     ) {
-        val buttonSize = resources.getDimensionPixelSize(appearance.buttonSize.dimensionResource())
+        val baseButtonSize = resources.getDimensionPixelSize(R.dimen.overlay_button_size)
+        val visualButtonSize = OverlayAppearanceRules.visualSize(
+            baseButtonSize,
+            appearance.buttonSizePercent,
+        )
+        val touchTargetSize = OverlayAppearanceRules.touchTargetSize(
+            visualSize = visualButtonSize,
+            minimumTouchSize = resources.getDimensionPixelSize(
+                R.dimen.overlay_button_min_touch_size,
+            ),
+        )
         val buttonSpacing = resources.getDimensionPixelSize(
             appearance.buttonSpacing.dimensionResource(),
         )
-        val buttons = installedApps.map { createOverlayButton() }
+        val buttons = installedApps.map {
+            createOverlayButton(
+                visualSize = visualButtonSize,
+                touchTargetSize = touchTargetSize,
+                sizePercent = appearance.buttonSizePercent,
+            )
+        }
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
@@ -317,7 +335,7 @@ class OverlayService : Service() {
             buttons.forEachIndexed { index, button ->
                 addView(
                     button,
-                    LinearLayout.LayoutParams(buttonSize, buttonSize).apply {
+                    LinearLayout.LayoutParams(touchTargetSize, touchTargetSize).apply {
                         if (index > 0) topMargin = buttonSpacing
                     },
                 )
@@ -369,26 +387,32 @@ class OverlayService : Service() {
         }
     }
 
-    private fun OverlayButtonSize.dimensionResource(): Int = when (this) {
-        OverlayButtonSize.SMALL -> R.dimen.overlay_button_size_small
-        OverlayButtonSize.MEDIUM -> R.dimen.overlay_button_size_medium
-        OverlayButtonSize.LARGE -> R.dimen.overlay_button_size_large
-    }
-
     private fun OverlayButtonSpacing.dimensionResource(): Int = when (this) {
         OverlayButtonSpacing.COMPACT -> R.dimen.overlay_button_spacing_compact
-        OverlayButtonSpacing.NORMAL -> R.dimen.overlay_button_spacing_normal
+        OverlayButtonSpacing.NORMAL -> R.dimen.overlay_button_spacing
         OverlayButtonSpacing.WIDE -> R.dimen.overlay_button_spacing_wide
     }
 
-    private fun createOverlayButton(): ImageButton = OverlayImageButton(
-        ContextThemeWrapper(this, R.style.Theme_FloatSwitch),
-    ).apply {
-        setBackgroundResource(R.drawable.overlay_button_background)
-        scaleType = ImageView.ScaleType.CENTER_INSIDE
-        val iconPadding = resources.getDimensionPixelSize(R.dimen.overlay_button_icon_padding)
-        setPadding(iconPadding, iconPadding, iconPadding, iconPadding)
-        elevation = resources.getDimension(R.dimen.overlay_button_elevation)
+    private fun createOverlayButton(
+        visualSize: Int,
+        touchTargetSize: Int,
+        sizePercent: Int,
+    ): ImageButton {
+        val visualInset = ((touchTargetSize - visualSize) / 2).coerceAtLeast(0)
+        val baseIconPadding = resources.getDimensionPixelSize(R.dimen.overlay_button_icon_padding)
+        val visualIconPadding = (baseIconPadding * sizePercent / 100f).roundToInt()
+        val actualPadding = visualInset + visualIconPadding
+        val existingBackground = requireNotNull(
+            ContextCompat.getDrawable(this, R.drawable.overlay_button_background),
+        )
+        return OverlayImageButton(
+            ContextThemeWrapper(this, R.style.Theme_FloatSwitch),
+        ).apply {
+            background = InsetDrawable(existingBackground, visualInset)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setPadding(actualPadding, actualPadding, actualPadding, actualPadding)
+            elevation = resources.getDimension(R.dimen.overlay_button_elevation)
+        }
     }
 
     private fun updateOverlayButtons(installedApps: List<InstalledLauncherApp>) {

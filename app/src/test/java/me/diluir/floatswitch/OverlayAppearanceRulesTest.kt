@@ -8,7 +8,7 @@ class OverlayAppearanceRulesTest {
     fun defaults_match_current_overlay_appearance() {
         assertEquals(
             OverlayAppearance(
-                buttonSize = OverlayButtonSize.MEDIUM,
+                buttonSizePercent = 100,
                 buttonSpacing = OverlayButtonSpacing.NORMAL,
             ),
             OverlayAppearanceRules.defaultAppearance,
@@ -19,10 +19,10 @@ class OverlayAppearanceRulesTest {
     fun stored_values_are_restored() {
         assertEquals(
             OverlayAppearance(
-                buttonSize = OverlayButtonSize.LARGE,
+                buttonSizePercent = 150,
                 buttonSpacing = OverlayButtonSpacing.WIDE,
             ),
-            OverlayAppearanceRules.fromStoredValues("LARGE", "WIDE"),
+            OverlayAppearanceRules.fromStoredValues(150, null, "WIDE"),
         )
     }
 
@@ -30,7 +30,7 @@ class OverlayAppearanceRulesTest {
     fun invalid_values_fall_back_to_current_defaults() {
         assertEquals(
             OverlayAppearanceRules.defaultAppearance,
-            OverlayAppearanceRules.fromStoredValues("INVALID", "INVALID"),
+            OverlayAppearanceRules.fromStoredValues(55, "LARGE", "INVALID"),
         )
     }
 
@@ -38,7 +38,40 @@ class OverlayAppearanceRulesTest {
     fun missing_values_fall_back_to_current_defaults() {
         assertEquals(
             OverlayAppearanceRules.defaultAppearance,
-            OverlayAppearanceRules.fromStoredValues(null, null),
+            OverlayAppearanceRules.fromStoredValues(null, null, null),
         )
+    }
+
+    @Test
+    fun legacy_sizes_are_migrated_to_nearest_ten_percent_step() {
+        assertEquals(
+            80,
+            OverlayAppearanceRules.fromStoredValues(null, "SMALL", null).buttonSizePercent,
+        )
+        assertEquals(
+            100,
+            OverlayAppearanceRules.fromStoredValues(null, "MEDIUM", null).buttonSizePercent,
+        )
+        assertEquals(
+            130,
+            OverlayAppearanceRules.fromStoredValues(null, "LARGE", null).buttonSizePercent,
+        )
+    }
+
+    @Test
+    fun size_changes_use_ten_percent_steps_and_stop_at_bounds() {
+        assertEquals(90, OverlayAppearanceRules.changeSize(100, -1))
+        assertEquals(110, OverlayAppearanceRules.changeSize(100, 1))
+        assertEquals(50, OverlayAppearanceRules.changeSize(50, -1))
+        assertEquals(150, OverlayAppearanceRules.changeSize(150, 1))
+    }
+
+    @Test
+    fun visual_size_scales_from_64_and_touch_target_never_drops_below_48() {
+        assertEquals(32, OverlayAppearanceRules.visualSize(64, 50))
+        assertEquals(64, OverlayAppearanceRules.visualSize(64, 100))
+        assertEquals(96, OverlayAppearanceRules.visualSize(64, 150))
+        assertEquals(48, OverlayAppearanceRules.touchTargetSize(32, 48))
+        assertEquals(64, OverlayAppearanceRules.touchTargetSize(64, 48))
     }
 }
