@@ -44,9 +44,11 @@ class OverlayService : Service() {
     private lateinit var overlayPositionStore: OverlayPositionStore
     private lateinit var positionLockStore: PositionLockStore
     private lateinit var autoStartStateStore: AutoStartStateStore
+    private lateinit var overlayAppearanceStore: OverlayAppearanceStore
     private var overlayView: View? = null
     private var overlayButtons: List<ImageButton> = emptyList()
     private var displayedSelections: List<SelectedApp> = emptyList()
+    private var displayedAppearance = OverlayAppearanceRules.defaultAppearance
     private var currentPosition = OverlayPositionRules.defaultPosition
     private var positionLocked = false
     private var activePointerId = MotionEvent.INVALID_POINTER_ID
@@ -88,7 +90,8 @@ class OverlayService : Service() {
                 stopForInvalidState(AutoStartResult.NO_VALID_APPLICATIONS)
                 return
             }
-            if (validSelections != displayedSelections) {
+            val currentAppearance = overlayAppearanceStore.load()
+            if (validSelections != displayedSelections || currentAppearance != displayedAppearance) {
                 val applications = try {
                     loadSelectedApplications()
                 } catch (_: SecurityException) {
@@ -123,6 +126,7 @@ class OverlayService : Service() {
         launcherAppsRepository = LauncherAppsRepository(packageManager, packageName)
         overlayPositionStore = OverlayPositionStore(this)
         positionLockStore = PositionLockStore(this)
+        overlayAppearanceStore = OverlayAppearanceStore(this)
         currentPosition = overlayPositionStore.load()
         positionLocked = positionLockStore.isPositionLocked()
     }
@@ -282,20 +286,29 @@ class OverlayService : Service() {
     }
 
     private fun showOrUpdateOverlay(installedApps: List<InstalledLauncherApp>) {
+        val appearance = overlayAppearanceStore.load()
         if (overlayView == null) {
-            createOverlay(installedApps)
-        } else if (overlayButtons.size != installedApps.size) {
+            createOverlay(installedApps, appearance)
+        } else if (
+            overlayButtons.size != installedApps.size ||
+            appearance != displayedAppearance
+        ) {
             resetGestureState()
             removeOverlay()
-            createOverlay(installedApps)
+            createOverlay(installedApps, appearance)
         } else {
             updateOverlayButtons(installedApps)
         }
     }
 
-    private fun createOverlay(installedApps: List<InstalledLauncherApp>) {
-        val buttonSize = resources.getDimensionPixelSize(R.dimen.overlay_button_size)
-        val buttonSpacing = resources.getDimensionPixelSize(R.dimen.overlay_button_spacing)
+    private fun createOverlay(
+        installedApps: List<InstalledLauncherApp>,
+        appearance: OverlayAppearance,
+    ) {
+        val buttonSize = resources.getDimensionPixelSize(appearance.buttonSize.dimensionResource())
+        val buttonSpacing = resources.getDimensionPixelSize(
+            appearance.buttonSpacing.dimensionResource(),
+        )
         val buttons = installedApps.map { createOverlayButton() }
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -339,6 +352,7 @@ class OverlayService : Service() {
             insets
         }
 
+        displayedAppearance = appearance
         overlayButtons = buttons
         updateOverlayButtons(installedApps)
         try {
@@ -353,6 +367,18 @@ class OverlayService : Service() {
             overlayButtons = emptyList()
             stopForInvalidState(AutoStartResult.RUNTIME_EXCEPTION)
         }
+    }
+
+    private fun OverlayButtonSize.dimensionResource(): Int = when (this) {
+        OverlayButtonSize.SMALL -> R.dimen.overlay_button_size_small
+        OverlayButtonSize.MEDIUM -> R.dimen.overlay_button_size_medium
+        OverlayButtonSize.LARGE -> R.dimen.overlay_button_size_large
+    }
+
+    private fun OverlayButtonSpacing.dimensionResource(): Int = when (this) {
+        OverlayButtonSpacing.COMPACT -> R.dimen.overlay_button_spacing_compact
+        OverlayButtonSpacing.NORMAL -> R.dimen.overlay_button_spacing_normal
+        OverlayButtonSpacing.WIDE -> R.dimen.overlay_button_spacing_wide
     }
 
     private fun createOverlayButton(): ImageButton = OverlayImageButton(
