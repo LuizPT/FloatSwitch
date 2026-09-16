@@ -33,9 +33,18 @@
     <dimen name="app_picker_icon_size">48dp</dimen>
     <dimen name="app_list_divider_height">1dp</dimen>
     <dimen name="overlay_button_size">64dp</dimen>
+    <dimen name="overlay_button_min_touch_size">48dp</dimen>
     <dimen name="overlay_button_spacing">6dp</dimen>
+    <dimen name="overlay_button_spacing_compact">2dp</dimen>
+    <dimen name="overlay_button_spacing_wide">12dp</dimen>
     <dimen name="overlay_button_corner_radius">18dp</dimen>
     <dimen name="overlay_button_icon_padding">8dp</dimen>
     <dimen name="overlay_button_elevation">6dp</dimen>
     <dimen name="overlay_edge_margin">12dp</dimen>
+    <dimen name="overlay_appearance_control_size">48dp</dimen>
+    <dimen name="overlay_appearance_percent_width">64dp</dimen>
+    <dimen name="overlay_appearance_section_spacing">12dp</dimen>
+    <dimen name="overlay_appearance_label_spacing">6dp</dimen>
+    <dimen name="overlay_group_background_padding">6dp</dimen>
+    <dimen name="overlay_group_background_corner_radius">20dp</dimen>
 </resources>

@@ -7,6 +7,25 @@
     <string name="overlay_toggle_description_off">Atalhos flutuantes desligados</string>
     <string name="screen_description">Escolha entre uma e seis aplicações e ordene os atalhos flutuantes.</string>
     <string name="overlay_move_guidance">Mantenha premido um atalho para mover o conjunto.</string>
+    <string name="overlay_size_heading">Tamanho</string>
+    <string name="overlay_size_decrease">−</string>
+    <string name="overlay_size_increase">+</string>
+    <string name="overlay_size_decrease_description">Diminuir tamanho dos atalhos</string>
+    <string name="overlay_size_increase_description">Aumentar tamanho dos atalhos</string>
+    <string name="overlay_size_percent" translatable="false">%1$d%%</string>
+    <string name="overlay_size_percent_description">Tamanho dos atalhos: %1$d%%</string>
+    <string name="overlay_spacing_heading">Espaçamento</string>
+    <string name="overlay_spacing_compact">Compacto</string>
+    <string name="overlay_spacing_normal">Normal</string>
+    <string name="overlay_spacing_wide">Amplo</string>
+    <string name="overlay_background_heading">Fundo dos atalhos</string>
+    <string name="overlay_background_show">Mostrar fundo</string>
+    <string name="overlay_background_description_on">Fundo dos atalhos visível</string>
+    <string name="overlay_background_description_off">Fundo dos atalhos oculto</string>
+    <string name="overlay_background_opacity">Opacidade</string>
+    <string name="overlay_background_opacity_description">Opacidade do fundo: %1$d%%</string>
+    <string name="overlay_background_opacity_decrease_description">Diminuir opacidade do fundo</string>
+    <string name="overlay_background_opacity_increase_description">Aumentar opacidade do fundo</string>
     <string name="button_change_application">Alterar</string>
     <string name="application_icon_generic_description">Ícone da aplicação</string>
     <string name="application_icon_description">Ícone de %1$s</string>

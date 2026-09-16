@@ -14,6 +14,8 @@ import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.graphics.Point
 import android.graphics.Rect
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.InsetDrawable
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -32,6 +34,7 @@ import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.appcompat.widget.AppCompatImageButton
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import kotlin.math.hypot
@@ -44,9 +47,11 @@ class OverlayService : Service() {
     private lateinit var overlayPositionStore: OverlayPositionStore
     private lateinit var positionLockStore: PositionLockStore
     private lateinit var autoStartStateStore: AutoStartStateStore
+    private lateinit var overlayAppearanceStore: OverlayAppearanceStore
     private var overlayView: View? = null
     private var overlayButtons: List<ImageButton> = emptyList()
     private var displayedSelections: List<SelectedApp> = emptyList()
+    private var displayedAppearance = OverlayAppearanceRules.defaultAppearance
     private var currentPosition = OverlayPositionRules.defaultPosition
     private var positionLocked = false
     private var activePointerId = MotionEvent.INVALID_POINTER_ID
@@ -88,7 +93,8 @@ class OverlayService : Service() {
                 stopForInvalidState(AutoStartResult.NO_VALID_APPLICATIONS)
                 return
             }
-            if (validSelections != displayedSelections) {
+            val currentAppearance = overlayAppearanceStore.load()
+            if (validSelections != displayedSelections || currentAppearance != displayedAppearance) {
                 val applications = try {
                     loadSelectedApplications()
                 } catch (_: SecurityException) {
@@ -123,6 +129,7 @@ class OverlayService : Service() {
         launcherAppsRepository = LauncherAppsRepository(packageManager, packageName)
         overlayPositionStore = OverlayPositionStore(this)
         positionLockStore = PositionLockStore(this)
+        overlayAppearanceStore = OverlayAppearanceStore(this)
         currentPosition = overlayPositionStore.load()
         positionLocked = positionLockStore.isPositionLocked()
     }
@@ -282,29 +289,55 @@ class OverlayService : Service() {
     }
 
     private fun showOrUpdateOverlay(installedApps: List<InstalledLauncherApp>) {
+        val appearance = overlayAppearanceStore.load()
         if (overlayView == null) {
-            createOverlay(installedApps)
-        } else if (overlayButtons.size != installedApps.size) {
+            createOverlay(installedApps, appearance)
+        } else if (
+            overlayButtons.size != installedApps.size ||
+            appearance != displayedAppearance
+        ) {
             resetGestureState()
             removeOverlay()
-            createOverlay(installedApps)
+            createOverlay(installedApps, appearance)
         } else {
             updateOverlayButtons(installedApps)
         }
     }
 
-    private fun createOverlay(installedApps: List<InstalledLauncherApp>) {
-        val buttonSize = resources.getDimensionPixelSize(R.dimen.overlay_button_size)
-        val buttonSpacing = resources.getDimensionPixelSize(R.dimen.overlay_button_spacing)
-        val buttons = installedApps.map { createOverlayButton() }
+    private fun createOverlay(
+        installedApps: List<InstalledLauncherApp>,
+        appearance: OverlayAppearance,
+    ) {
+        val baseButtonSize = resources.getDimensionPixelSize(R.dimen.overlay_button_size)
+        val visualButtonSize = OverlayAppearanceRules.visualSize(
+            baseButtonSize,
+            appearance.buttonSizePercent,
+        )
+        val touchTargetSize = OverlayAppearanceRules.touchTargetSize(
+            visualSize = visualButtonSize,
+            minimumTouchSize = resources.getDimensionPixelSize(
+                R.dimen.overlay_button_min_touch_size,
+            ),
+        )
+        val buttonSpacing = resources.getDimensionPixelSize(
+            appearance.buttonSpacing.dimensionResource(),
+        )
+        val buttons = installedApps.map {
+            createOverlayButton(
+                visualSize = visualButtonSize,
+                touchTargetSize = touchTargetSize,
+                sizePercent = appearance.buttonSizePercent,
+            )
+        }
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             layoutDirection = View.LAYOUT_DIRECTION_LTR
+            applyGroupBackground(appearance)
             buttons.forEachIndexed { index, button ->
                 addView(
                     button,
-                    LinearLayout.LayoutParams(buttonSize, buttonSize).apply {
+                    LinearLayout.LayoutParams(touchTargetSize, touchTargetSize).apply {
                         if (index > 0) topMargin = buttonSpacing
                     },
                 )
@@ -339,6 +372,7 @@ class OverlayService : Service() {
             insets
         }
 
+        displayedAppearance = appearance
         overlayButtons = buttons
         updateOverlayButtons(installedApps)
         try {
@@ -355,14 +389,48 @@ class OverlayService : Service() {
         }
     }
 
-    private fun createOverlayButton(): ImageButton = OverlayImageButton(
-        ContextThemeWrapper(this, R.style.Theme_FloatSwitch),
-    ).apply {
-        setBackgroundResource(R.drawable.overlay_button_background)
-        scaleType = ImageView.ScaleType.CENTER_INSIDE
-        val iconPadding = resources.getDimensionPixelSize(R.dimen.overlay_button_icon_padding)
-        setPadding(iconPadding, iconPadding, iconPadding, iconPadding)
-        elevation = resources.getDimension(R.dimen.overlay_button_elevation)
+    private fun LinearLayout.applyGroupBackground(appearance: OverlayAppearance) {
+        if (!appearance.backgroundEnabled) return
+        val containerPadding = resources.getDimensionPixelSize(
+            R.dimen.overlay_group_background_padding,
+        )
+        setPadding(containerPadding, containerPadding, containerPadding, containerPadding)
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = resources.getDimension(
+                R.dimen.overlay_group_background_corner_radius,
+            )
+            setColor(ContextCompat.getColor(this@OverlayService, R.color.overlay_group_background))
+            alpha = (255 * appearance.backgroundOpacityPercent / 100f).roundToInt()
+        }
+    }
+
+    private fun OverlayButtonSpacing.dimensionResource(): Int = when (this) {
+        OverlayButtonSpacing.COMPACT -> R.dimen.overlay_button_spacing_compact
+        OverlayButtonSpacing.NORMAL -> R.dimen.overlay_button_spacing
+        OverlayButtonSpacing.WIDE -> R.dimen.overlay_button_spacing_wide
+    }
+
+    private fun createOverlayButton(
+        visualSize: Int,
+        touchTargetSize: Int,
+        sizePercent: Int,
+    ): ImageButton {
+        val visualInset = ((touchTargetSize - visualSize) / 2).coerceAtLeast(0)
+        val baseIconPadding = resources.getDimensionPixelSize(R.dimen.overlay_button_icon_padding)
+        val visualIconPadding = (baseIconPadding * sizePercent / 100f).roundToInt()
+        val actualPadding = visualInset + visualIconPadding
+        val existingBackground = requireNotNull(
+            ContextCompat.getDrawable(this, R.drawable.overlay_button_background),
+        )
+        return OverlayImageButton(
+            ContextThemeWrapper(this, R.style.Theme_FloatSwitch),
+        ).apply {
+            background = InsetDrawable(existingBackground, visualInset)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setPadding(actualPadding, actualPadding, actualPadding, actualPadding)
+            elevation = resources.getDimension(R.dimen.overlay_button_elevation)
+        }
     }
 
     private fun updateOverlayButtons(installedApps: List<InstalledLauncherApp>) {
