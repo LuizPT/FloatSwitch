@@ -330,18 +330,16 @@ class OverlayService : Service() {
             )
         }
         val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             layoutDirection = View.LAYOUT_DIRECTION_LTR
             applyGroupBackground(appearance)
-            buttons.forEachIndexed { index, button ->
+            buttons.forEach { button ->
                 addView(
                     button,
-                    LinearLayout.LayoutParams(touchTargetSize, touchTargetSize).apply {
-                        if (index > 0) topMargin = buttonSpacing
-                    },
+                    LinearLayout.LayoutParams(touchTargetSize, touchTargetSize),
                 )
             }
+            applyEdgeOrientation(currentPosition.edge, buttonSpacing)
         }
         val layoutParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -409,6 +407,34 @@ class OverlayService : Service() {
         OverlayButtonSpacing.COMPACT -> R.dimen.overlay_button_spacing_compact
         OverlayButtonSpacing.NORMAL -> R.dimen.overlay_button_spacing
         OverlayButtonSpacing.WIDE -> R.dimen.overlay_button_spacing_wide
+    }
+
+    private fun OverlayEdge.linearLayoutOrientation(): Int =
+        when (OverlayPositionMath.layoutAxisForEdge(this)) {
+            OverlayLayoutAxis.VERTICAL -> LinearLayout.VERTICAL
+            OverlayLayoutAxis.HORIZONTAL -> LinearLayout.HORIZONTAL
+        }
+
+    private fun LinearLayout.applyEdgeOrientation(edge: OverlayEdge, spacing: Int) {
+        val targetOrientation = edge.linearLayoutOrientation()
+        orientation = targetOrientation
+        repeat(childCount) { index ->
+            val child = getChildAt(index)
+            val params = child.layoutParams as LinearLayout.LayoutParams
+            params.topMargin = if (index > 0 && targetOrientation == LinearLayout.VERTICAL) {
+                spacing
+            } else {
+                0
+            }
+            params.marginStart = if (
+                index > 0 && targetOrientation == LinearLayout.HORIZONTAL
+            ) {
+                spacing
+            } else {
+                0
+            }
+            child.layoutParams = params
+        }
     }
 
     private fun createOverlayButton(
@@ -593,23 +619,26 @@ class OverlayService : Service() {
     }
 
     private fun finishDragging() {
-        val container = overlayView
+        val container = overlayView as? LinearLayout
         val params = container?.layoutParams as? WindowManager.LayoutParams
         if (container != null && params != null && container.width > 0 && container.height > 0) {
             val bounds = calculateMovementBounds(container)
             val limitedPosition = OverlayPositionMath.clamp(params.x, params.y, bounds)
-            val side = OverlayPositionMath.nearestSide(limitedPosition.x, bounds)
-            params.x = OverlayPositionMath.xForSide(side, bounds)
-            params.y = limitedPosition.y
-            updateOverlayLayout(container, params)
-
-            currentPosition = OverlayPosition(
-                side = side,
-                verticalFraction = OverlayPositionMath.normalizeVertical(params.y, bounds),
+            currentPosition = OverlayPositionMath.snapPosition(
+                limitedPosition.x,
+                limitedPosition.y,
+                bounds,
             )
             overlayPositionStore.save(currentPosition)
+            container.applyEdgeOrientation(
+                currentPosition.edge,
+                resources.getDimensionPixelSize(
+                    displayedAppearance.buttonSpacing.dimensionResource(),
+                ),
+            )
         }
         resetGestureState()
+        container?.post { restoreOverlayPosition() }
     }
 
     private fun resetGestureState() {
@@ -637,11 +666,9 @@ class OverlayService : Service() {
         val params = container.layoutParams as? WindowManager.LayoutParams ?: return
         val bounds = calculateMovementBounds(container)
         currentPosition = OverlayPositionRules.sanitize(currentPosition)
-        params.x = OverlayPositionMath.xForSide(currentPosition.side, bounds)
-        params.y = OverlayPositionMath.restoreVertical(
-            currentPosition.verticalFraction,
-            bounds,
-        )
+        val restoredPosition = OverlayPositionMath.restorePosition(currentPosition, bounds)
+        params.x = restoredPosition.x
+        params.y = restoredPosition.y
         updateOverlayLayout(container, params)
     }
 

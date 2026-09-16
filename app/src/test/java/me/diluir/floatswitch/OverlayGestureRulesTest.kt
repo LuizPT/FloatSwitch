@@ -1,5 +1,6 @@
 package me.diluir.floatswitch
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -54,5 +55,23 @@ class OverlayGestureRulesTest {
                 hasActivePointer = true,
             ),
         )
+    }
+
+    @Test
+    fun lockedPosition_doesNotReachSnapAndRemainsUnchanged() {
+        val currentPosition = OverlayPosition(OverlayEdge.RIGHT, 0.5f)
+        val bounds = OverlayMovementBounds(0, 100, 0, 200)
+        val canStartDrag = OverlayGestureRules.shouldStartDrag(
+            positionLocked = true,
+            movedBeyondSlop = false,
+            hasActivePointer = true,
+        )
+        val resultingPosition = if (canStartDrag) {
+            OverlayPositionMath.snapPosition(0, 0, bounds)
+        } else {
+            currentPosition
+        }
+
+        assertEquals(currentPosition, resultingPosition)
     }
 }
