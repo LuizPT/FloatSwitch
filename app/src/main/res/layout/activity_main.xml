@@ -80,6 +80,12 @@
                 android:textColor="@color/screen_text_secondary"
                 android:textSize="@dimen/text_size_body" />
 
+            <me.diluir.floatswitch.OverlayAppearanceControlsView
+                android:id="@+id/overlayAppearanceControls"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_large" />
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
