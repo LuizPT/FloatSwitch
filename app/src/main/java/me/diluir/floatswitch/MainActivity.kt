@@ -27,6 +27,8 @@ import com.google.android.material.button.MaterialButton
 import java.text.DateFormat
 import java.util.Date
 
+private const val AUTO_START_DIAGNOSTIC_DETAIL_SEPARATOR = " · "
+
 class MainActivity : AppCompatActivity() {
     private lateinit var overlayPermissionBlock: View
     private lateinit var feedbackText: TextView
@@ -128,6 +130,10 @@ class MainActivity : AppCompatActivity() {
         addApplicationButton = findViewById(R.id.addApplicationButton)
         applicationCountText = findViewById(R.id.applicationCountText)
         applicationsContainer = findViewById(R.id.selectedApplicationsContainer)
+        LanguageSelector(
+            this,
+            findViewById(R.id.languageButton),
+        ).bind()
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { view, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -345,18 +351,23 @@ class MainActivity : AppCompatActivity() {
         val diagnostic = autoStartStateStore.loadDiagnostic()
         if (diagnostic == null) {
             autoStartDiagnosticText.setText(R.string.auto_start_diagnostic_never)
+            autoStartDiagnosticText.contentDescription = autoStartDiagnosticText.text
             return
         }
         val formattedDate = DateFormat.getDateTimeInstance(
             DateFormat.MEDIUM,
             DateFormat.SHORT,
         ).format(Date(diagnostic.timestampMillis))
-        autoStartDiagnosticText.text = getString(
+        val detailedDiagnostic = getString(
             R.string.auto_start_diagnostic_format,
             formattedDate,
             getString(diagnostic.event.displayNameResource()),
             getString(diagnostic.result.displayNameResource()),
         )
+        autoStartDiagnosticText.text = detailedDiagnostic.substringBefore(
+            AUTO_START_DIAGNOSTIC_DETAIL_SEPARATOR,
+        )
+        autoStartDiagnosticText.contentDescription = detailedDiagnostic
     }
 
     private fun setAutoStartSwitchChecked(checked: Boolean) {

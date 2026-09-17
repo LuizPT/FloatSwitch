@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetTop="@dimen/language_header_background_inset_vertical"
+    android:insetBottom="@dimen/language_header_background_inset_vertical">
+    <ripple android:color="@color/overlay_button_pressed">
+        <item>
+            <shape android:shape="rectangle">
+                <solid android:color="@color/app_slot_background" />
+                <stroke
+                    android:width="@dimen/language_header_stroke_width"
+                    android:color="@color/app_list_divider" />
+                <corners android:radius="@dimen/language_header_corner_radius" />
+            </shape>
+        </item>
+    </ripple>
+</inset>

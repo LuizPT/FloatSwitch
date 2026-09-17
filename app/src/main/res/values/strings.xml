@@ -1,99 +1,123 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <string name="app_name">FloatSwitch</string>
-    <string name="screen_title">Atalhos flutuantes</string>
+    <string name="app_name" translatable="false">FloatSwitch</string>
+    <string name="screen_title">Floating shortcuts</string>
     <string name="overlay_toggle_on">ON</string>
     <string name="overlay_toggle_off">OFF</string>
-    <string name="overlay_toggle_description_on">Atalhos flutuantes ligados</string>
-    <string name="overlay_toggle_description_off">Atalhos flutuantes desligados</string>
-    <string name="screen_description">Escolha entre uma e seis aplicações e ordene os atalhos flutuantes.</string>
-    <string name="overlay_move_guidance">Mantenha premido um atalho para mover o conjunto.</string>
-    <string name="overlay_size_heading">Tamanho</string>
-    <string name="overlay_size_decrease">−</string>
-    <string name="overlay_size_increase">+</string>
-    <string name="overlay_size_decrease_description">Diminuir tamanho dos atalhos</string>
-    <string name="overlay_size_increase_description">Aumentar tamanho dos atalhos</string>
+    <string name="overlay_toggle_description_on">Floating shortcuts on</string>
+    <string name="overlay_toggle_description_off">Floating shortcuts off</string>
+    <string name="screen_description">Choose and arrange between one and six floating shortcuts.</string>
+    <string name="overlay_move_guidance">Touch and hold a shortcut to move the group.</string>
+    <string name="overlay_size_heading">Size</string>
+    <string name="overlay_size_decrease" translatable="false">−</string>
+    <string name="overlay_size_increase" translatable="false">+</string>
+    <string name="overlay_size_decrease_description">Decrease shortcut size</string>
+    <string name="overlay_size_increase_description">Increase shortcut size</string>
     <string name="overlay_size_percent" translatable="false">%1$d%%</string>
-    <string name="overlay_size_percent_description">Tamanho dos atalhos: %1$d%%</string>
-    <string name="overlay_spacing_heading">Espaçamento</string>
-    <string name="overlay_spacing_compact">Compacto</string>
+    <string name="overlay_size_percent_description">Shortcut size: %1$d%%</string>
+    <string name="overlay_spacing_heading">Spacing</string>
+    <string name="overlay_spacing_compact">Compact</string>
     <string name="overlay_spacing_normal">Normal</string>
-    <string name="overlay_spacing_wide">Amplo</string>
-    <string name="overlay_background_heading">Fundo dos atalhos</string>
-    <string name="overlay_background_show">Mostrar fundo</string>
-    <string name="overlay_background_description_on">Fundo dos atalhos visível</string>
-    <string name="overlay_background_description_off">Fundo dos atalhos oculto</string>
-    <string name="overlay_background_opacity">Opacidade</string>
-    <string name="overlay_background_opacity_description">Opacidade do fundo: %1$d%%</string>
-    <string name="overlay_background_opacity_decrease_description">Diminuir opacidade do fundo</string>
-    <string name="overlay_background_opacity_increase_description">Aumentar opacidade do fundo</string>
-    <string name="button_change_application">Alterar</string>
-    <string name="application_icon_generic_description">Ícone da aplicação</string>
-    <string name="application_icon_description">Ícone de %1$s</string>
-    <string name="application_selection_saved">%1$s foi escolhida.</string>
-    <string name="duplicate_application_not_allowed">Esta aplicação já pertence à lista.</string>
-    <string name="invalid_application_selection_removed">Uma aplicação escolhida já não está disponível e foi removida da configuração.</string>
-    <string name="applications_heading">Aplicações</string>
-    <string name="application_count" tools:ignore="PluralsCandidate">%1$d de %2$d aplicações</string>
-    <string name="application_count_initial">0 de 6 aplicações</string>
+    <string name="overlay_spacing_wide">Wide</string>
+    <string name="overlay_background_heading">Shortcut background</string>
+    <string name="overlay_background_show">Show background</string>
+    <string name="overlay_background_description_on">Shortcut background visible</string>
+    <string name="overlay_background_description_off">Shortcut background hidden</string>
+    <string name="overlay_background_opacity">Opacity</string>
+    <string name="overlay_background_opacity_description">Background opacity: %1$d%%</string>
+    <string name="overlay_background_opacity_decrease_description">Decrease background opacity</string>
+    <string name="overlay_background_opacity_increase_description">Increase background opacity</string>
+    <string name="button_change_application">Change</string>
+    <string name="application_icon_generic_description">Application icon</string>
+    <string name="application_icon_description">%1$s icon</string>
+    <string name="application_selection_saved">%1$s was selected.</string>
+    <string name="duplicate_application_not_allowed">This application is already in the list.</string>
+    <string name="invalid_application_selection_removed">An unavailable application was removed from the configuration.</string>
+    <string name="applications_heading">Applications</string>
+    <string name="application_count" tools:ignore="PluralsCandidate">%1$d of %2$d applications</string>
+    <string name="application_count_initial">0 of 6 applications</string>
     <string name="application_position_number" translatable="false">%1$d</string>
-    <string name="button_add_application">Adicionar aplicação</string>
-    <string name="change_application_description">Alterar %1$s</string>
-    <string name="remove_application_description">Remover %1$s</string>
-    <string name="move_application_up_description">Mover %1$s para cima</string>
-    <string name="move_application_down_description">Mover %1$s para baixo</string>
-    <string name="tooltip_move_application_up">Mover para cima</string>
-    <string name="tooltip_move_application_down">Mover para baixo</string>
-    <string name="tooltip_remove_application">Remover aplicação</string>
-    <string name="application_removed">A aplicação foi removida da lista.</string>
-    <string name="last_application_removed">A última aplicação foi removida e os atalhos foram ocultados.</string>
-    <string name="at_least_one_application_required">Escolha pelo menos uma aplicação válida antes de mostrar os atalhos.</string>
-    <string name="app_picker_title">Escolher aplicação</string>
-    <string name="app_picker_search_hint">Pesquisar por nome</string>
-    <string name="app_picker_empty">Nenhuma aplicação encontrada.</string>
-    <string name="overlay_permission_missing">É necessária autorização para apresentar os atalhos sobre outras aplicações.</string>
-    <string name="button_grant_overlay_permission">Conceder autorização</string>
-    <string name="auto_start_title">Iniciar automaticamente com o dispositivo</string>
-    <string name="auto_start_description">Mostra os atalhos automaticamente depois de o Android arrancar.</string>
-    <string name="auto_start_enabled_feedback">O arranque automático foi activado.</string>
-    <string name="auto_start_disabled_feedback">O arranque automático foi desactivado. Os atalhos actuais mantêm-se visíveis.</string>
-    <string name="auto_start_requires_overlay">Conceda a autorização “Mostrar sobre outras aplicações” antes de activar o arranque automático.</string>
-    <string name="auto_start_requires_apps">Escolha pelo menos uma aplicação válida antes de activar o arranque automático.</string>
-    <string name="position_lock_title">Bloquear posição</string>
-    <string name="position_lock_description_on">Posição dos atalhos bloqueada</string>
-    <string name="position_lock_description_off">Posição dos atalhos desbloqueada</string>
-    <string name="auto_start_diagnostic_never">Último arranque automático: nunca</string>
-    <string name="auto_start_diagnostic_format">Último arranque automático: %1$s · %2$s · %3$s</string>
-    <string name="auto_start_event_boot">arranque do dispositivo</string>
-    <string name="auto_start_event_package_replaced">actualização do FloatSwitch</string>
-    <string name="auto_start_event_service_recovery">recuperação do serviço</string>
-    <string name="auto_start_event_unknown">evento desconhecido</string>
-    <string name="auto_start_result_requested">início do serviço pedido</string>
-    <string name="auto_start_result_disabled">ignorado: arranque automático desactivado</string>
-    <string name="auto_start_result_overlay_permission">ignorado: autorização de sobreposição em falta</string>
-    <string name="auto_start_result_first_app">ignorado: Aplicação 1 inválida</string>
-    <string name="auto_start_result_second_app">ignorado: Aplicação 2 inválida</string>
-    <string name="auto_start_result_no_applications">ignorado: nenhuma aplicação válida</string>
-    <string name="auto_start_result_too_many_applications">ignorado: existem aplicações a mais</string>
-    <string name="auto_start_result_unknown">ignorado: acção desconhecida</string>
-    <string name="auto_start_result_not_allowed">falhou: Android não permitiu iniciar o serviço em primeiro plano</string>
-    <string name="auto_start_result_security">falhou: autorização de sistema insuficiente</string>
-    <string name="auto_start_result_runtime">falhou: erro ao pedir o serviço</string>
-    <string name="initial_guidance">Escolha pelo menos uma aplicação, conceda a autorização e active os atalhos no interruptor.</string>
-    <string name="overlay_permission_required">Para mostrar os atalhos, conceda primeiro a autorização “Mostrar sobre outras aplicações”.</string>
-    <string name="notification_permission_explanation">Para manter uma notificação visível enquanto os atalhos estão activos, autorize as notificações.</string>
-    <string name="notification_permission_denied">A autorização de notificações não foi concedida. Os atalhos não foram iniciados.</string>
-    <string name="shortcuts_start_requested">A iniciar os atalhos flutuantes.</string>
-    <string name="shortcuts_start_failed">Não foi possível iniciar os atalhos flutuantes.</string>
-    <string name="shortcuts_hidden">Os atalhos flutuantes foram ocultados.</string>
-    <string name="shortcuts_hide_failed">O pedido para ocultar os atalhos não pôde ser entregue. O serviço irá parar ao verificar o estado.</string>
-    <string name="notification_channel_name">Atalhos flutuantes</string>
-    <string name="notification_channel_description">Mantém o FloatSwitch activo enquanto os atalhos estão visíveis.</string>
-    <string name="notification_title">FloatSwitch activo</string>
-    <string name="notification_text">Atalhos flutuantes activos</string>
-    <string name="notification_action_hide">Ocultar</string>
-    <string name="overlay_button_open_application">%1$s. Toque para abrir. Mantenha premido para mover o conjunto.</string>
-    <string name="overlay_button_open_application_locked">%1$s. Toque para abrir. A posição do conjunto está bloqueada.</string>
-    <string name="application_launch_failed">Não foi possível abrir %1$s.</string>
-    <string name="overlay_accessibility_title">Atalhos flutuantes do FloatSwitch</string>
+    <string name="button_add_application">Add application</string>
+    <string name="change_application_description">Change %1$s</string>
+    <string name="remove_application_description">Remove %1$s</string>
+    <string name="move_application_up_description">Move %1$s up</string>
+    <string name="move_application_down_description">Move %1$s down</string>
+    <string name="tooltip_move_application_up">Move up</string>
+    <string name="tooltip_move_application_down">Move down</string>
+    <string name="tooltip_remove_application">Remove application</string>
+    <string name="application_removed">The application was removed from the list.</string>
+    <string name="last_application_removed">The last application was removed and the shortcuts were hidden.</string>
+    <string name="at_least_one_application_required">Choose at least one valid application before showing the shortcuts.</string>
+    <string name="app_picker_title">Choose application</string>
+    <string name="app_picker_search_hint">Search by name</string>
+    <string name="app_picker_empty">No applications found.</string>
+    <string name="overlay_permission_missing">Permission is required to display shortcuts over other applications.</string>
+    <string name="button_grant_overlay_permission">Grant permission</string>
+    <string name="auto_start_title">Start automatically with the device</string>
+    <string name="auto_start_description">Shows the shortcuts automatically after Android starts.</string>
+    <string name="auto_start_enabled_feedback">Automatic start enabled.</string>
+    <string name="auto_start_disabled_feedback">Automatic start disabled. Current shortcuts remain visible.</string>
+    <string name="auto_start_requires_overlay">Grant the “Display over other apps” permission before enabling automatic start.</string>
+    <string name="auto_start_requires_apps">Choose at least one valid application before enabling automatic start.</string>
+    <string name="position_lock_title">Lock position</string>
+    <string name="position_lock_description_on">Shortcut position locked</string>
+    <string name="position_lock_description_off">Shortcut position unlocked</string>
+    <string name="auto_start_diagnostic_never">Last automatic start: never</string>
+    <string name="auto_start_diagnostic_format">Last automatic start: %1$s · %2$s · %3$s</string>
+    <string name="auto_start_event_boot">device start</string>
+    <string name="auto_start_event_package_replaced">FloatSwitch update</string>
+    <string name="auto_start_event_service_recovery">service recovery</string>
+    <string name="auto_start_event_unknown">unknown event</string>
+    <string name="auto_start_result_requested">service start requested</string>
+    <string name="auto_start_result_disabled">ignored: automatic start disabled</string>
+    <string name="auto_start_result_overlay_permission">ignored: overlay permission missing</string>
+    <string name="auto_start_result_first_app">ignored: Application 1 invalid</string>
+    <string name="auto_start_result_second_app">ignored: Application 2 invalid</string>
+    <string name="auto_start_result_no_applications">ignored: no valid applications</string>
+    <string name="auto_start_result_too_many_applications">ignored: too many applications</string>
+    <string name="auto_start_result_unknown">ignored: unknown action</string>
+    <string name="auto_start_result_not_allowed">failed: Android did not allow the foreground service to start</string>
+    <string name="auto_start_result_security">failed: insufficient system permission</string>
+    <string name="auto_start_result_runtime">failed: error requesting service start</string>
+    <string name="initial_guidance">Choose at least one application, grant permission and turn on the shortcuts.</string>
+    <string name="overlay_permission_required">Grant the “Display over other apps” permission before showing shortcuts.</string>
+    <string name="notification_permission_explanation">Allow notifications to keep a notification visible while shortcuts are active.</string>
+    <string name="notification_permission_denied">Notification permission was not granted. Shortcuts were not started.</string>
+    <string name="shortcuts_start_requested">Starting floating shortcuts.</string>
+    <string name="shortcuts_start_failed">Could not start floating shortcuts.</string>
+    <string name="shortcuts_hidden">Floating shortcuts hidden.</string>
+    <string name="shortcuts_hide_failed">The hide request could not be delivered. The service will stop when it checks its state.</string>
+    <string name="notification_channel_name">Floating shortcuts</string>
+    <string name="notification_channel_description">Keeps FloatSwitch active while shortcuts are visible.</string>
+    <string name="notification_title">FloatSwitch active</string>
+    <string name="notification_text">Floating shortcuts active</string>
+    <string name="notification_action_hide">Hide</string>
+    <string name="overlay_button_open_application">%1$s. Tap to open. Touch and hold to move the group.</string>
+    <string name="overlay_button_open_application_locked">%1$s. Tap to open. The group position is locked.</string>
+    <string name="application_launch_failed">Could not open %1$s.</string>
+    <string name="overlay_accessibility_title">FloatSwitch floating shortcuts</string>
+    <string name="language_sheet_title">Language</string>
+    <string name="language_automatic">Automatic (system)</string>
+    <string name="language_selector_description">Language: %1$s</string>
+    <string name="language_selector_description_automatic">Language: Automatic (system)</string>
+    <string name="language_automatic_badge" translatable="false">A</string>
+    <string name="language_english" translatable="false">English</string>
+    <string name="language_portuguese_portugal" translatable="false">Português (Portugal)</string>
+    <string name="language_portuguese_brazil" translatable="false">Português (Brasil)</string>
+    <string name="language_spanish" translatable="false">Español</string>
+    <string name="language_french" translatable="false">Français</string>
+    <string name="language_german" translatable="false">Deutsch</string>
+    <string name="language_italian" translatable="false">Italiano</string>
+    <string name="language_dutch" translatable="false">Nederlands</string>
+    <string name="language_polish" translatable="false">Polski</string>
+    <string name="language_ukrainian" translatable="false">Українська</string>
+    <string name="language_russian" translatable="false">Русский</string>
+    <string name="language_chinese_simplified" translatable="false">中文（简体）</string>
+    <string name="language_chinese_traditional" translatable="false">中文（繁體）</string>
+    <string name="language_japanese" translatable="false">日本語</string>
+    <string name="language_korean" translatable="false">한국어</string>
+    <string name="language_arabic" translatable="false">العربية</string>
+    <string name="language_turkish" translatable="false">Türkçe</string>
+    <string name="language_hindi" translatable="false">हिन्दी</string>
     <string name="foreground_service_special_use_subtype" translatable="false">Persistent user-controlled floating application shortcuts</string>
+    <string name="status_log_heading">Status / Log</string>
 </resources>

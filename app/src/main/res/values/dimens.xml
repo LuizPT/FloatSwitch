@@ -14,7 +14,6 @@
     <dimen name="overlay_toggle_horizontal_padding">12dp</dimen>
     <dimen name="overlay_toggle_corner_radius">24dp</dimen>
     <dimen name="overlay_toggle_stroke_width">1dp</dimen>
-    <dimen name="feedback_min_height">48dp</dimen>
     <dimen name="text_size_title">28sp</dimen>
     <dimen name="text_size_label">18sp</dimen>
     <dimen name="text_size_body">16sp</dimen>
@@ -47,4 +46,23 @@
     <dimen name="overlay_appearance_label_spacing">6dp</dimen>
     <dimen name="overlay_group_background_padding">6dp</dimen>
     <dimen name="overlay_group_background_corner_radius">20dp</dimen>
+    <dimen name="language_header_button_width">52dp</dimen>
+    <dimen name="language_header_touch_height">48dp</dimen>
+    <dimen name="language_header_corner_radius">10dp</dimen>
+    <dimen name="language_header_stroke_width">1dp</dimen>
+    <dimen name="language_header_background_inset_vertical">4dp</dimen>
+    <dimen name="language_header_image_padding_horizontal">12dp</dimen>
+    <dimen name="language_header_image_padding_vertical">14dp</dimen>
+    <dimen name="language_header_toggle_spacing">16dp</dimen>
+    <dimen name="language_grid_button_size">56dp</dimen>
+    <dimen name="language_grid_button_height">44dp</dimen>
+    <dimen name="language_grid_button_corner_radius">8dp</dimen>
+    <dimen name="language_grid_button_stroke_width">1dp</dimen>
+    <dimen name="language_grid_option_spacing">8dp</dimen>
+    <dimen name="language_dialog_padding">16dp</dimen>
+    <dimen name="language_dialog_title_spacing">8dp</dimen>
+    <dimen name="language_dialog_screen_margin">16dp</dimen>
+    <dimen name="language_dialog_window_insets">48dp</dimen>
+    <dimen name="language_automatic_badge_size">16dp</dimen>
+    <dimen name="language_automatic_badge_margin">1dp</dimen>
 </resources>

@@ -40,6 +40,22 @@
                     android:textSize="@dimen/text_size_title"
                     android:textStyle="bold" />
 
+                <androidx.appcompat.widget.AppCompatImageButton
+                    android:id="@+id/languageButton"
+                    android:layout_width="@dimen/language_header_button_width"
+                    android:layout_height="@dimen/language_header_touch_height"
+                    android:layout_marginStart="@dimen/spacing_small"
+                    android:layout_marginEnd="@dimen/language_header_toggle_spacing"
+                    android:background="@drawable/bg_language_header_button"
+                    android:clickable="true"
+                    android:contentDescription="@string/language_selector_description_automatic"
+                    android:focusable="true"
+                    android:paddingHorizontal="@dimen/language_header_image_padding_horizontal"
+                    android:paddingVertical="@dimen/language_header_image_padding_vertical"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/flag_united_kingdom"
+                    app:tint="@null" />
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/overlayToggleButton"
                     style="@style/Widget.Material3.Button.TonalButton"
@@ -168,13 +184,26 @@
                 android:textColor="@color/screen_text_primary"
                 android:textSize="@dimen/text_size_body" />
 
+            <me.diluir.floatswitch.OverlayBackgroundControlsView
+                android:id="@+id/overlayBackgroundControls"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_large" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/app_list_divider_height"
+                android:layout_marginTop="@dimen/spacing_large"
+                android:background="@color/app_list_divider" />
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/spacing_small"
-                android:text="@string/auto_start_description"
-                android:textColor="@color/screen_text_secondary"
-                android:textSize="@dimen/text_size_body" />
+                android:layout_marginTop="@dimen/spacing_medium"
+                android:text="@string/status_log_heading"
+                android:textColor="@color/screen_text_primary"
+                android:textSize="@dimen/text_size_label"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/autoStartDiagnostic"
@@ -189,18 +218,11 @@
                 android:id="@+id/feedbackText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/spacing_medium"
+                android:layout_marginTop="@dimen/spacing_small"
                 android:accessibilityLiveRegion="polite"
-                android:minHeight="@dimen/feedback_min_height"
                 android:text="@string/initial_guidance"
                 android:textColor="@color/screen_text_secondary"
                 android:textSize="@dimen/text_size_body" />
-
-            <me.diluir.floatswitch.OverlayBackgroundControlsView
-                android:id="@+id/overlayBackgroundControls"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/spacing_large" />
         </LinearLayout>
     </ScrollView>
 
