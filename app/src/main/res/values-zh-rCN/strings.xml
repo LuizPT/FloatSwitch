@@ -95,4 +95,5 @@
     <string name="language_selector_description">语言：%1$s</string>
     <string name="language_selector_description_automatic">语言：自动（系统）</string>
     <string name="status_log_heading">状态 / 日志</string>
+    <string name="overlay_settings_button_description">打开 FloatSwitch 设置</string>
 </resources>

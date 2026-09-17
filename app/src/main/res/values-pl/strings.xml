@@ -95,4 +95,5 @@
     <string name="language_selector_description">Język: %1$s</string>
     <string name="language_selector_description_automatic">Język: Automatyczny (systemowy)</string>
     <string name="status_log_heading">Stan / Dziennik</string>
+    <string name="overlay_settings_button_description">Otwórz ustawienia FloatSwitch</string>
 </resources>

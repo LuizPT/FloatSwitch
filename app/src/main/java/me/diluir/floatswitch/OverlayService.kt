@@ -11,8 +11,9 @@ import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.res.Configuration
 import android.content.pm.ServiceInfo
+import android.content.res.ColorStateList
+import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.graphics.Point
 import android.graphics.Rect
@@ -22,6 +23,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.ContextThemeWrapper
 import android.view.Gravity
@@ -51,6 +53,7 @@ class OverlayService : Service() {
     private lateinit var autoStartStateStore: AutoStartStateStore
     private lateinit var overlayAppearanceStore: OverlayAppearanceStore
     private var overlayView: View? = null
+    private var settingsButtonView: View? = null
     private var overlayButtons: List<ImageButton> = emptyList()
     private var displayedSelections: List<SelectedApp> = emptyList()
     private var displayedAppearance = OverlayAppearanceRules.defaultAppearance
@@ -66,10 +69,18 @@ class OverlayService : Service() {
     private var longPressDetected = false
     private var dragStarted = false
     private val gestureHandler = Handler(Looper.getMainLooper())
+    private val editModeState = OverlayEditModeState(EDIT_MODE_TIMEOUT_MS)
     private val touchSlop by lazy { ViewConfiguration.get(this).scaledTouchSlop }
-    private val longPressAction = Runnable {
-        longPressDetected = true
-        startDragging()
+    private val longPressAction = Runnable { activateEditMode() }
+    private val hideSettingsButtonAction = object : Runnable {
+        override fun run() {
+            val nowMs = SystemClock.uptimeMillis()
+            if (editModeState.isVisibleAt(nowMs)) {
+                gestureHandler.postDelayed(this, editModeState.remainingTimeMs(nowMs))
+            } else {
+                hideSettingsButton()
+            }
+        }
     }
     private val stateCheckHandler = Handler(Looper.getMainLooper())
     private val stateCheck = object : Runnable {
@@ -188,7 +199,10 @@ class OverlayService : Service() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        overlayView?.post { restoreOverlayPosition() }
+        overlayView?.post {
+            restoreOverlayPosition()
+            updateSettingsButtonPosition()
+        }
     }
 
     override fun onDestroy() {
@@ -364,7 +378,10 @@ class OverlayService : Service() {
             val sizeChanged = right - left != oldRight - oldLeft ||
                 bottom - top != oldBottom - oldTop
             if (sizeChanged && !dragStarted) {
-                container.post { restoreOverlayPosition() }
+                container.post {
+                    restoreOverlayPosition()
+                    updateSettingsButtonPosition()
+                }
             }
         }
         ViewCompat.setOnApplyWindowInsetsListener(container) { _, insets ->
@@ -484,23 +501,33 @@ class OverlayService : Service() {
     private fun handleOverlayTouch(view: View, event: MotionEvent): Boolean =
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                refreshEditModeTimeout()
                 beginGesture(view, event)
                 false
             }
 
             MotionEvent.ACTION_MOVE -> {
+                refreshEditModeTimeout()
                 updateGesture(event)
                 false
             }
 
-            MotionEvent.ACTION_POINTER_DOWN -> false
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                refreshEditModeTimeout()
+                false
+            }
             MotionEvent.ACTION_POINTER_UP -> {
+                refreshEditModeTimeout()
                 handlePointerUp(event)
                 false
             }
 
-            MotionEvent.ACTION_UP -> finishGesture(event)
+            MotionEvent.ACTION_UP -> {
+                refreshEditModeTimeout()
+                finishGesture(event)
+            }
             MotionEvent.ACTION_CANCEL -> {
+                refreshEditModeTimeout()
                 cancelGesture()
                 false
             }
@@ -515,7 +542,24 @@ class OverlayService : Service() {
         downRawX = rawX(event, 0)
         downRawY = rawY(event, 0)
         view.isPressed = true
-        gestureHandler.postDelayed(longPressAction, ViewConfiguration.getLongPressTimeout().toLong())
+        gestureHandler.postDelayed(longPressAction, EDIT_MODE_LONG_PRESS_MS)
+    }
+
+    private fun activateEditMode() {
+        if (
+            !OverlayEditModeRules.shouldActivate(
+                movedBeyondSlop = touchMovedBeyondSlop,
+                hasActivePointer = activePointerId != MotionEvent.INVALID_POINTER_ID,
+            )
+        ) {
+            return
+        }
+
+        longPressDetected = true
+        gestureView?.isPressed = false
+        gestureView?.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        showSettingsButton()
+        startDragging()
     }
 
     private fun updateGesture(event: MotionEvent) {
@@ -607,7 +651,6 @@ class OverlayService : Service() {
         dragStartX = params.x
         dragStartY = params.y
         gestureView?.isPressed = false
-        gestureView?.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
         container.alpha = DRAGGING_ALPHA
     }
 
@@ -620,6 +663,7 @@ class OverlayService : Service() {
         params.x = limitedPosition.x
         params.y = limitedPosition.y
         updateOverlayLayout(container, params)
+        updateSettingsButtonPosition()
     }
 
     private fun finishDragging() {
@@ -642,7 +686,10 @@ class OverlayService : Service() {
             )
         }
         resetGestureState()
-        container?.post { restoreOverlayPosition() }
+        container?.post {
+            restoreOverlayPosition()
+            updateSettingsButtonPosition()
+        }
     }
 
     private fun resetGestureState() {
@@ -674,6 +721,157 @@ class OverlayService : Service() {
         params.x = restoredPosition.x
         params.y = restoredPosition.y
         updateOverlayLayout(container, params)
+        updateSettingsButtonPosition()
+    }
+
+    @SuppressLint("RtlHardcoded") // The shortcut follows physical screen edges.
+    private fun showSettingsButton() {
+        val existingButton = settingsButtonView
+        if (existingButton != null) {
+            restartEditModeTimeout()
+            updateSettingsButtonPosition()
+            return
+        }
+
+        val buttonSize = resources.getDimensionPixelSize(R.dimen.overlay_settings_button_size)
+        val button = AppCompatImageButton(
+            ContextThemeWrapper(this, R.style.Theme_FloatSwitch),
+        ).apply {
+            setImageResource(R.drawable.ic_settings_24)
+            imageTintList = ColorStateList.valueOf(
+                ContextCompat.getColor(this@OverlayService, R.color.screen_text_primary),
+            )
+            background = ContextCompat.getDrawable(
+                this@OverlayService,
+                R.drawable.overlay_button_background,
+            )
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            val iconPadding = resources.getDimensionPixelSize(
+                R.dimen.overlay_settings_button_icon_padding,
+            )
+            setPadding(iconPadding, iconPadding, iconPadding, iconPadding)
+            elevation = resources.getDimension(R.dimen.overlay_button_elevation)
+            contentDescription = getString(R.string.overlay_settings_button_description)
+            setOnClickListener {
+                hideSettingsButton()
+                openMainActivity()
+            }
+        }
+        val layoutParams = WindowManager.LayoutParams(
+            buttonSize,
+            buttonSize,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.LEFT or Gravity.TOP
+            setTitle(getString(R.string.overlay_settings_button_description))
+        }
+        settingsButtonView = button
+        applySettingsButtonPosition(layoutParams, buttonSize, buttonSize)
+        try {
+            windowManager.addView(button, layoutParams)
+            restartEditModeTimeout()
+        } catch (_: SecurityException) {
+            settingsButtonView = null
+            editModeState.hide()
+            stopForInvalidState(AutoStartResult.OVERLAY_PERMISSION_MISSING)
+        } catch (_: RuntimeException) {
+            settingsButtonView = null
+            editModeState.hide()
+        }
+    }
+
+    private fun refreshEditModeTimeout() {
+        if (settingsButtonView == null) return
+        editModeState.recordInteraction(SystemClock.uptimeMillis())
+        scheduleSettingsButtonHide()
+    }
+
+    private fun restartEditModeTimeout() {
+        editModeState.activate(SystemClock.uptimeMillis())
+        scheduleSettingsButtonHide()
+    }
+
+    private fun scheduleSettingsButtonHide() {
+        gestureHandler.removeCallbacks(hideSettingsButtonAction)
+        val remainingMs = editModeState.remainingTimeMs(SystemClock.uptimeMillis())
+        if (remainingMs > 0L) {
+            gestureHandler.postDelayed(hideSettingsButtonAction, remainingMs)
+        } else {
+            hideSettingsButton()
+        }
+    }
+
+    private fun updateSettingsButtonPosition() {
+        val button = settingsButtonView ?: return
+        val params = button.layoutParams as? WindowManager.LayoutParams ?: return
+        applySettingsButtonPosition(params, params.width, params.height)
+        try {
+            windowManager.updateViewLayout(button, params)
+        } catch (_: IllegalArgumentException) {
+            hideSettingsButton()
+        } catch (_: SecurityException) {
+            hideSettingsButton()
+        }
+    }
+
+    private fun applySettingsButtonPosition(
+        params: WindowManager.LayoutParams,
+        buttonWidth: Int,
+        buttonHeight: Int,
+    ) {
+        val container = overlayView ?: return
+        val overlayParams = container.layoutParams as? WindowManager.LayoutParams ?: return
+        if (container.width == 0 || container.height == 0) return
+        val usableBounds = calculateUsableScreenBounds(container)
+        val edgeMargin = resources.getDimensionPixelSize(R.dimen.overlay_edge_margin)
+        val buttonBounds = OverlayPositionMath.movementBounds(
+            screenLeft = usableBounds.left,
+            screenTop = usableBounds.top,
+            screenRight = usableBounds.right,
+            screenBottom = usableBounds.bottom,
+            overlayWidth = buttonWidth,
+            overlayHeight = buttonHeight,
+            margin = edgeMargin,
+        )
+        val position = OverlaySettingsShortcutMath.position(
+            edge = currentPosition.edge,
+            overlayX = overlayParams.x,
+            overlayY = overlayParams.y,
+            overlayWidth = container.width,
+            overlayHeight = container.height,
+            buttonWidth = buttonWidth,
+            buttonHeight = buttonHeight,
+            gap = resources.getDimensionPixelSize(R.dimen.overlay_settings_button_gap),
+            buttonBounds = buttonBounds,
+        )
+        params.x = position.x
+        params.y = position.y
+    }
+
+    private fun hideSettingsButton() {
+        gestureHandler.removeCallbacks(hideSettingsButtonAction)
+        editModeState.hide()
+        settingsButtonView?.let { button ->
+            try {
+                windowManager.removeView(button)
+            } catch (_: RuntimeException) {
+                // The system may already have removed the auxiliary window.
+            }
+        }
+        settingsButtonView = null
+    }
+
+    private fun openMainActivity() {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP,
+            )
+        }
+        tryStartActivity(intent)
     }
 
     private fun calculateMovementBounds(view: View): OverlayMovementBounds {
@@ -779,6 +977,7 @@ class OverlayService : Service() {
     }
 
     private fun removeOverlay() {
+        hideSettingsButton()
         overlayView?.let { view ->
             try {
                 windowManager.removeView(view)
@@ -822,6 +1021,8 @@ class OverlayService : Service() {
         private const val REQUEST_OPEN_APP = 1002
         private const val REQUEST_STOP = 1003
         private const val STATE_CHECK_INTERVAL_MS = 5_000L
+        private const val EDIT_MODE_LONG_PRESS_MS = 900L
+        private const val EDIT_MODE_TIMEOUT_MS = 5_000L
         private const val DRAGGING_ALPHA = 0.85f
     }
 }

@@ -95,6 +95,7 @@
     <string name="overlay_button_open_application_locked">%1$s. Tap to open. The group position is locked.</string>
     <string name="application_launch_failed">Could not open %1$s.</string>
     <string name="overlay_accessibility_title">FloatSwitch floating shortcuts</string>
+    <string name="overlay_settings_button_description">Open FloatSwitch settings</string>
     <string name="language_sheet_title">Language</string>
     <string name="language_automatic">Automatic (system)</string>
     <string name="language_selector_description">Language: %1$s</string>
