@@ -1,5 +1,7 @@
 package me.diluir.floatswitch
 
+import android.annotation.SuppressLint
+
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -304,6 +306,7 @@ class OverlayService : Service() {
         }
     }
 
+    @SuppressLint("RtlHardcoded") // Stored edges are physical, independent of locale direction.
     private fun createOverlay(
         installedApps: List<InstalledLauncherApp>,
         appearance: OverlayAppearance,
@@ -348,7 +351,8 @@ class OverlayService : Service() {
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT,
         ).apply {
-            gravity = Gravity.START or Gravity.TOP
+            // Physical edges must not change meaning when the application locale is RTL.
+            gravity = Gravity.LEFT or Gravity.TOP
             x = 0
             y = 0
             setTitle(getString(R.string.overlay_accessibility_title))

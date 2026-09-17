@@ -19,4 +19,8 @@
     <color name="overlay_toggle_text_checked">#FFFFFFFF</color>
     <color name="overlay_toggle_text_unchecked">#FF1F2328</color>
     <color name="overlay_toggle_text_disabled">#FF4F555C</color>
+    <color name="language_option_selected_background">#FFE8DEF8</color>
+    <color name="language_option_selected_stroke">#FF6750A4</color>
+    <color name="language_automatic_badge_background">#FF6750A4</color>
+    <color name="language_automatic_badge_text">#FFFFFFFF</color>
 </resources>
