@@ -22,4 +22,5 @@
     <string name="overlay_button_open_application">%1$s. Toca para abrir. Mantén pulsado para mover el grupo.</string><string name="overlay_button_open_application_locked">%1$s. Toca para abrir. La posición del grupo está bloqueada.</string><string name="application_launch_failed">No se pudo abrir %1$s.</string><string name="overlay_accessibility_title">Accesos directos flotantes de FloatSwitch</string>
     <string name="language_sheet_title">Idioma</string><string name="language_automatic">Automático (sistema)</string><string name="language_selector_description">Idioma: %1$s</string><string name="language_selector_description_automatic">Idioma: Automático (sistema)</string>
     <string name="status_log_heading">Estado / Registro</string>
+    <string name="overlay_settings_button_description">Abrir los ajustes de FloatSwitch</string>
 </resources>

@@ -40,6 +40,9 @@
     <dimen name="overlay_button_icon_padding">8dp</dimen>
     <dimen name="overlay_button_elevation">6dp</dimen>
     <dimen name="overlay_edge_margin">12dp</dimen>
+    <dimen name="overlay_settings_button_size">48dp</dimen>
+    <dimen name="overlay_settings_button_gap">8dp</dimen>
+    <dimen name="overlay_settings_button_icon_padding">12dp</dimen>
     <dimen name="overlay_appearance_control_size">48dp</dimen>
     <dimen name="overlay_appearance_percent_width">64dp</dimen>
     <dimen name="overlay_appearance_section_spacing">12dp</dimen>

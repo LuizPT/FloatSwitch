@@ -95,4 +95,5 @@
     <string name="language_selector_description">Dil: %1$s</string>
     <string name="language_selector_description_automatic">Dil: Otomatik (sistem)</string>
     <string name="status_log_heading">Durum / Günlük</string>
+    <string name="overlay_settings_button_description">FloatSwitch ayarlarını aç</string>
 </resources>

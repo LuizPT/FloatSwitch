@@ -95,4 +95,5 @@
     <string name="language_selector_description">언어: %1$s</string>
     <string name="language_selector_description_automatic">언어: 자동(시스템)</string>
     <string name="status_log_heading">상태 / 기록</string>
+    <string name="overlay_settings_button_description">FloatSwitch 설정 열기</string>
 </resources>
