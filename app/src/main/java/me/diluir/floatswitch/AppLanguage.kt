@@ -26,7 +26,6 @@ enum class AppLanguage(
     DUTCH("nl", R.drawable.flag_netherlands, R.string.language_dutch),
     POLISH("pl", R.drawable.flag_poland, R.string.language_polish),
     UKRAINIAN("uk", R.drawable.flag_ukraine, R.string.language_ukrainian),
-    RUSSIAN("ru", R.drawable.flag_russia, R.string.language_russian),
     CHINESE_SIMPLIFIED(
         "zh-CN",
         R.drawable.flag_china,
@@ -47,20 +46,27 @@ enum class AppLanguage(
 object AppLanguageRules {
     val supportedLanguages: List<AppLanguage> = AppLanguage.entries
 
+    fun isRussianLocaleTag(languageTag: String): Boolean =
+        Locale.forLanguageTag(languageTag).language.equals("ru", ignoreCase = true)
+
     fun fromApplicationLanguageTags(languageTags: String?): AppLanguage {
         val firstTag = languageTags.orEmpty().split(',').firstOrNull().orEmpty().trim()
         if (firstTag.isEmpty()) return AppLanguage.AUTOMATIC
-        return matchSupportedLocale(Locale.forLanguageTag(firstTag)) ?: AppLanguage.ENGLISH
+        return matchSupportedLocale(Locale.forLanguageTag(firstTag), russianAutomaticFallback = false)
+            ?: AppLanguage.ENGLISH
     }
 
     fun effectiveAutomaticLanguage(systemLanguageTags: List<String>): AppLanguage =
         systemLanguageTags.asSequence()
             .map(Locale::forLanguageTag)
-            .mapNotNull(::matchSupportedLocale)
+            .mapNotNull { matchSupportedLocale(it, russianAutomaticFallback = true) }
             .firstOrNull()
             ?: AppLanguage.ENGLISH
 
-    private fun matchSupportedLocale(locale: Locale): AppLanguage? = when (locale.language) {
+    private fun matchSupportedLocale(
+        locale: Locale,
+        russianAutomaticFallback: Boolean,
+    ): AppLanguage? = when (locale.language) {
         "en" -> AppLanguage.ENGLISH
         "pt" -> if (locale.country.equals("BR", ignoreCase = true)) {
             AppLanguage.PORTUGUESE_BRAZIL
@@ -75,7 +81,8 @@ object AppLanguageRules {
         "nl" -> AppLanguage.DUTCH
         "pl" -> AppLanguage.POLISH
         "uk" -> AppLanguage.UKRAINIAN
-        "ru" -> AppLanguage.RUSSIAN
+        // Russian is not selectable; only automatic Russian systems use Ukrainian.
+        "ru" -> if (russianAutomaticFallback) AppLanguage.UKRAINIAN else null
         "zh" -> if (
             locale.country.equals("TW", ignoreCase = true) ||
             locale.country.equals("HK", ignoreCase = true) ||

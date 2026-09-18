@@ -1,5 +1,6 @@
 package me.diluir.floatswitch
 
+import android.content.Context
 import android.content.res.Resources
 import android.view.Gravity
 import android.view.View
@@ -10,6 +11,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.widget.AppCompatImageButton
+import androidx.core.content.edit
 import androidx.core.os.ConfigurationCompat
 import androidx.core.os.LocaleListCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -20,8 +22,37 @@ class LanguageSelector(
     private val headerButton: AppCompatImageButton,
 ) {
     fun bind() {
+        synchronizeAutomaticRussianFallback()
         updateHeaderButton()
         headerButton.setOnClickListener { showLanguageDialog() }
+    }
+
+    private fun synchronizeAutomaticRussianFallback() {
+        val applicationLocales = AppCompatDelegate.getApplicationLocales()
+        val automaticRussian = systemLanguageTags().firstOrNull()?.let {
+            AppLanguageRules.isRussianLocaleTag(it)
+        } == true
+        val markedAutomaticRussian = languagePreferences.getBoolean(
+            KEY_AUTOMATIC_RUSSIAN_FALLBACK,
+            false,
+        )
+        when {
+            automaticRussian && applicationLocales.isEmpty -> {
+                languagePreferences.edit {
+                    putBoolean(KEY_AUTOMATIC_RUSSIAN_FALLBACK, true)
+                }
+                AppCompatDelegate.setApplicationLocales(
+                    LocaleListCompat.forLanguageTags(AppLanguage.UKRAINIAN.languageTag),
+                )
+            }
+
+            markedAutomaticRussian && !automaticRussian -> {
+                languagePreferences.edit {
+                    remove(KEY_AUTOMATIC_RUSSIAN_FALLBACK)
+                }
+                AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList())
+            }
+        }
     }
 
     private fun updateHeaderButton() {
@@ -191,17 +222,36 @@ class LanguageSelector(
 
     private fun applyLanguage(language: AppLanguage) {
         val locales = if (language == AppLanguage.AUTOMATIC) {
-            LocaleListCompat.getEmptyLocaleList()
+            if (systemLanguageTags().firstOrNull()?.let(AppLanguageRules::isRussianLocaleTag) == true) {
+                languagePreferences.edit {
+                    putBoolean(KEY_AUTOMATIC_RUSSIAN_FALLBACK, true)
+                }
+                LocaleListCompat.forLanguageTags(AppLanguage.UKRAINIAN.languageTag)
+            } else {
+                languagePreferences.edit {
+                    remove(KEY_AUTOMATIC_RUSSIAN_FALLBACK)
+                }
+                LocaleListCompat.getEmptyLocaleList()
+            }
         } else {
+            languagePreferences.edit {
+                remove(KEY_AUTOMATIC_RUSSIAN_FALLBACK)
+            }
             LocaleListCompat.forLanguageTags(language.languageTag)
         }
         AppCompatDelegate.setApplicationLocales(locales)
     }
 
-    private fun currentSelection(): AppLanguage =
-        AppLanguageRules.fromApplicationLanguageTags(
-            AppCompatDelegate.getApplicationLocales().toLanguageTags(),
-        )
+    private fun currentSelection(): AppLanguage {
+        val applicationLocales = AppCompatDelegate.getApplicationLocales()
+        if (
+            languagePreferences.getBoolean(KEY_AUTOMATIC_RUSSIAN_FALLBACK, false) &&
+            applicationLocales.toLanguageTags().equals(AppLanguage.UKRAINIAN.languageTag, true)
+        ) {
+            return AppLanguage.AUTOMATIC
+        }
+        return AppLanguageRules.fromApplicationLanguageTags(applicationLocales.toLanguageTags())
+    }
 
     private fun displayedLanguage(selectedLanguage: AppLanguage): AppLanguage {
         if (selectedLanguage != AppLanguage.AUTOMATIC) return selectedLanguage
@@ -213,13 +263,25 @@ class LanguageSelector(
         )
     }
 
+    private fun systemLanguageTags(): List<String> {
+        val locales = ConfigurationCompat.getLocales(Resources.getSystem().configuration)
+        return (0 until locales.size()).mapNotNull { index ->
+            locales[index]?.toLanguageTag()
+        }
+    }
+
     private fun dimension(resource: Int): Int =
         activity.resources.getDimensionPixelSize(resource)
+
+    private val languagePreferences
+        get() = activity.getSharedPreferences(LANGUAGE_PREFERENCES, Context.MODE_PRIVATE)
 
     companion object {
         private const val WIDE_SCREEN_MIN_WIDTH_DP = 600
         private const val WIDE_GRID_COLUMNS = 5
         private const val NARROW_GRID_COLUMNS = 4
         private const val LANGUAGE_BADGE_TEXT_SIZE_SP = 9f
+        private const val LANGUAGE_PREFERENCES = "language_preferences"
+        private const val KEY_AUTOMATIC_RUSSIAN_FALLBACK = "automatic_russian_fallback"
     }
 }

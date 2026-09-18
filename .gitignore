@@ -7,6 +7,13 @@
 .kotlin/
 build/
 
+# Private signing material and credentials
+*.jks
+*.keystore
+*.p12
+*.pfx
+signing.properties
+
 # Local Android SDK configuration
 local.properties
 

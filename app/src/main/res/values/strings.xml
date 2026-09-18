@@ -111,7 +111,6 @@
     <string name="language_dutch" translatable="false">Nederlands</string>
     <string name="language_polish" translatable="false">Polski</string>
     <string name="language_ukrainian" translatable="false">Українська</string>
-    <string name="language_russian" translatable="false">Русский</string>
     <string name="language_chinese_simplified" translatable="false">中文（简体）</string>
     <string name="language_chinese_traditional" translatable="false">中文（繁體）</string>
     <string name="language_japanese" translatable="false">日本語</string>

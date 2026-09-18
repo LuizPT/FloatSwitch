@@ -10,7 +10,7 @@ Launcher flutuante leve para alternar rapidamente entre aplicações Android, ma
 
 ## Estado
 
-- Versão actual: `v0.2-beta1`
+- Versão actual: `v0.3-beta1`
 - Estado: beta
 - Android mínimo: Android 8.0/API 26
 - Dispositivo principal de teste: Android 14, 1920×720, horizontal
@@ -18,14 +18,19 @@ Launcher flutuante leve para alternar rapidamente entre aplicações Android, ma
 ## Funcionalidades
 
 - Uma a seis aplicações configuráveis
+- Troca rápida entre aplicações através de atalhos flutuantes
 - Ícones reais das aplicações
 - Reordenação, alteração e remoção de atalhos
-- Atalhos móveis com encaixe nas margens
+- Atalhos móveis com encaixe nas quatro margens do ecrã
+- Tamanho e espaçamento configuráveis
+- Fundo opcional com opacidade configurável
 - Posição persistente
 - Bloqueio de posição
 - Controlo ON/OFF
 - Arranque automático
 - Recuperação após reinício
+- Acesso às definições por pressão longa nos atalhos
+- Suporte multi-idioma, incluindo selecção automática, manual e RTL
 - Ícone adaptativo e temático
 
 ## Privacidade
@@ -35,6 +40,7 @@ Launcher flutuante leve para alternar rapidamente entre aplicações Android, ma
 - Sem analytics
 - Sem conta
 - Sem recolha ou transmissão de dados
+- Sem permissões desnecessárias
 
 ## Instalação
 
@@ -43,7 +49,7 @@ Launcher flutuante leve para alternar rapidamente entre aplicações Android, ma
 3. Instalar o APK.
 4. Para actualizar, instalar por cima da versão anterior sem a desinstalar.
 
-Esta é uma versão beta assinada com uma chave de desenvolvimento e destina-se a testes.
+Esta é uma versão beta destinada a testes.
 
 ## Licença
 

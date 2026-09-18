@@ -1,0 +1,6 @@
+# Copy these keys to local.properties, which is ignored by Git.
+# Never commit real passwords or private signing material.
+FLOATSWITCH_STORE_FILE=C:/caminho/seguro/FloatSwitch-release.jks
+FLOATSWITCH_STORE_PASSWORD=CHANGE_ME
+FLOATSWITCH_KEY_ALIAS=floatswitch
+FLOATSWITCH_KEY_PASSWORD=CHANGE_ME
