@@ -4,7 +4,7 @@ Launcher flutuante leve para alternar rapidamente entre aplicações Android, ma
 
 ## Descarregar
 
-[⬇️ Descarregar FloatSwitch v0.2 beta 1](https://github.com/LuizPT/FloatSwitch/releases/download/v0.2-beta1/FloatSwitch-v0.2-beta1-debug.apk)
+[⬇️ Descarregar FloatSwitch v0.3 beta 1](https://github.com/LuizPT/FloatSwitch/releases/download/v0.3-beta1/FloatSwitch-v0.3-beta1.apk)
 
 [Consultar todas as versões](https://github.com/LuizPT/FloatSwitch/releases)
 
